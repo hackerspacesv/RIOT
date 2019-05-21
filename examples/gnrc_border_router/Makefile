@@ -4,6 +4,9 @@ APPLICATION = gnrc_border_router
 # If no BOARD is found in the environment, use this default:
 BOARD ?= samr21-xpro
 
+#Use this macro to force the ethos interface adapter to use an specific global ipv6 address.
+# CFLAGS += -DUHCPC_ETHOS_IF_ADDRESS=\"Configure:me::please\"
+
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
 
