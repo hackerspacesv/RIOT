@@ -45,8 +45,13 @@ extern "C" {
    * @brief   Device descriptor for a wiegand device
    */
   typedef struct {
-    unsigned long code;       /**< Wiegand code */
-    int type;                 /**< Wiegand type */
+    uint32_t code;                         /**< Wiegand code */
+    int16_t type;                                   /**< Wiegand type */
+    volatile uint32_t wg_card_temp_high;   /**< Card LSB */
+    volatile uint32_t wg_card_temp;        /**< Card MSB */
+    volatile uint32_t wg_last_wiegand;
+    volatile int16_t wg_bit_count;
+    const wiegand_params_t *conn;
   } wiegand_t;
   
   /**
@@ -58,7 +63,7 @@ extern "C" {
    * @return                   0 on success
    * @return                  -1 on error
    */
-  int wg_init(wiegand_t *dev, const wiegand_params_t *params);
+  int16_t wg_init(wiegand_t *dev, const wiegand_params_t *params);
   
   /**
    * @brief   Checks and stores new Wiegand data
@@ -77,14 +82,14 @@ extern "C" {
    *
    * @return                  Code read from device
    */
-  unsigned long wg_get_code(wiegand_t *dev);
+  uint32_t wg_get_code(wiegand_t *dev);
   
   /**
    * @brief   Reads the Wiegand device type
    *
    * @param[out] dev         device descriptor of sensor
    */
-  int wg_get_wiegand_type(wiegand_t *dev);
+  int16_t wg_get_wiegand_type(wiegand_t *dev);
   
   #ifdef __cplusplus
 }
