@@ -546,6 +546,12 @@ ifneq (,$(filter w5100,$(USEMODULE)))
   USEMODULE += luid
 endif
 
+ifneq (,$(filter wiegand,$(USEMODULE)))
+  USEMODULE += xtimer
+  FEATURES_REQUIRED += periph_gpio
+  FEATURES_REQUIRED += periph_gpio_irq
+endif
+
 ifneq (,$(filter xbee,$(USEMODULE)))
   FEATURES_REQUIRED += periph_uart
   FEATURES_REQUIRED += periph_gpio
