@@ -31,7 +31,7 @@
 #ifdef __cplusplus
 extern "C" {
   #endif
-  
+
   /**
    * @brief   Parameters needed for device initialization
    */
@@ -40,20 +40,22 @@ extern "C" {
     gpio_t       d1;      /**< Wiegand D1 data line */
     gpio_flank_t flank;   /**< flank detection */
   } wiegand_params_t;
-  
+
   /**
    * @brief   Device descriptor for a wiegand device
    */
   typedef struct {
     uint32_t code;                         /**< Wiegand code */
-    int16_t type;                                   /**< Wiegand type */
-    volatile uint32_t wg_card_temp_high;   /**< Card LSB */
-    volatile uint32_t wg_card_temp;        /**< Card MSB */
-    volatile uint32_t wg_last_wiegand;
-    volatile int16_t wg_bit_count;
-    const wiegand_params_t *conn;
+    int16_t type;                          /**< Wiegand type */
+    bool ready;
+    int16_t last_bit_count;
+    volatile uint32_t wg_card_temp_high;   /**< Card MSB */
+    volatile uint32_t wg_card_temp;        /**< Card LSV  */
+    volatile uint32_t wg_last_wiegand;     /**< Last card lecture */
+    volatile int16_t wg_bit_count;         /**< Number of bits read */
+    const wiegand_params_t *conn;          /**< Connection parameters */
   } wiegand_t;
-  
+
   /**
    * @brief   Initialize a Wiegand device
    *
@@ -64,7 +66,7 @@ extern "C" {
    * @return                  -1 on error
    */
   int16_t wg_init(wiegand_t *dev, const wiegand_params_t *params);
-  
+
   /**
    * @brief   Checks and stores new Wiegand data
    *
@@ -74,7 +76,7 @@ extern "C" {
    * @return                  false if no data
    */
   bool wg_available(wiegand_t *dev);
-  
+
   /**
    * @brief   Reads the code read from the Wiegand device
    *
@@ -83,14 +85,14 @@ extern "C" {
    * @return                  Code read from device
    */
   uint32_t wg_get_code(wiegand_t *dev);
-  
+
   /**
    * @brief   Reads the Wiegand device type
    *
    * @param[out] dev         device descriptor of sensor
    */
   int16_t wg_get_wiegand_type(wiegand_t *dev);
-  
+
   #ifdef __cplusplus
 }
 #endif

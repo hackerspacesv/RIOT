@@ -27,12 +27,12 @@
 extern "C" {
 #endif
 
-#ifndef WIEGAND_D0 
-#define WIEGAND_D0        GPIO_PIN(PA, 5)
+#ifndef WIEGAND_D0
+#define WIEGAND_D0        GPIO_PIN(0, 1)
 #endif
-  
-#ifndef WIEGAND_D1 
-#define WIEGAND_D1        GPIO_PIN(PA, 6)
+
+#ifndef WIEGAND_D1
+#define WIEGAND_D1        GPIO_PIN(0, 2)
 #endif
 
 #ifndef WIEGAND_FLANK

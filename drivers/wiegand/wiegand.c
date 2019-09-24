@@ -1,9 +1,9 @@
 /*
  * Copyright (C) 2019 Hackerspace San Salvador
- * 
+ *
  * This driver is a port for RIOT-OS based on the Wiegand protocol for
  * Arduino implementation from monkeyboards.org.
- * 
+ *
  * Original implementation available at:
  *   https://github.com/monkeyboard/Wiegand-Protocol-Library-for-Arduino
  *
@@ -30,44 +30,48 @@
 
 /**
  * @brief Handler for D0 signal in Wiegand protocol
- * 
- */ 
+ *
+ */
 void wg_read_d0(void *arg)
 {
   wiegand_t *dev = (wiegand_t *)arg;
+
+  gpio_set(HSSV_ATSAMR21_GPIO);
+
   // Increament bit count for Interrupt connected to D0
   dev->wg_bit_count++;
   // If bit count more than 31, process high bits
   if (dev->wg_bit_count>31)
   {
     // shift value to high bits
-    dev->wg_card_temp_high |= ((0x80000000 & dev->wg_card_temp)>>31); 
+    dev->wg_card_temp_high |= ((0x80000000 & dev->wg_card_temp)>>31);
     dev->wg_card_temp_high <<= 1;
     dev->wg_card_temp <<=1;
   }
   else
   {
     // D0 represent binary 0, so just left shift card data
-    dev->wg_card_temp <<= 1; 
+    dev->wg_card_temp <<= 1;
   }
-  // Keep track of last wiegand bit received
-  dev->wg_last_wiegand = xtimer_now_usec64();
+  gpio_clear(HSSV_ATSAMR21_GPIO);
 }
 
 /**
  * @brief Handler for D1 signal in Wiegand protocol
- * 
+ *
  */
 void wg_read_d1(void *arg)
 {
   wiegand_t *dev = (wiegand_t *)arg;
-  
+
+  gpio_set(HSSV_ATSAMR21_GPIO);
+
   // Increment bit count for Interrupt connected to D1
-  dev->wg_bit_count ++;
-  
+  dev->wg_bit_count++;
+
   // If bit count more than 31, process high bits
   if (dev->wg_bit_count>31)
-  { 
+  {
     // shift value to high bits
     dev->wg_card_temp_high |= ((0x80000000 & dev->wg_card_temp)>>31);
     dev->wg_card_temp_high <<= 1;
@@ -81,13 +85,12 @@ void wg_read_d1(void *arg)
     // left shift card data
     dev->wg_card_temp <<= 1;
   }
-  // Keep track of last wiegand bit received
-  dev->wg_last_wiegand = xtimer_now_usec64();
+  gpio_clear(HSSV_ATSAMR21_GPIO);
 }
 
 /**
  * @brief Returns the last code read from the Wiegand device.
- * 
+ *
  */
 unsigned long wg_get_code(wiegand_t *dev)
 {
@@ -96,7 +99,7 @@ unsigned long wg_get_code(wiegand_t *dev)
 
 /**
  * @brief Returns the Wiegand type.
- * 
+ *
  */
 int16_t wg_get_wiegand_type(wiegand_t *dev)
 {
@@ -105,16 +108,16 @@ int16_t wg_get_wiegand_type(wiegand_t *dev)
 
 /**
  * @brief Translates * and # keys to [ENTER] and [ESCAPE] keys.
- * 
+ *
  */
 char translate_enter_escape_key_press(char originalKeyPress) {
   switch(originalKeyPress) {
     case 0x0b:     // 11 or * key
       return 0x0d; // 13 or ASCII ENTER
-      
+
     case 0x0a:     // 10 or # key
       return 0x1b; // 27 or ASCII ESCAPE
-      
+
     default:
       return originalKeyPress;
   }
@@ -122,7 +125,7 @@ char translate_enter_escape_key_press(char originalKeyPress) {
 
 /**
  * @brief Disables interrupt handling for D0 and D1 lines.
- * 
+ *
  */
 static inline void wg_disable_int(wiegand_t *dev)
 {
@@ -132,7 +135,7 @@ static inline void wg_disable_int(wiegand_t *dev)
 
 /**
  * @brief Enables interrupt handling for D0 and D1 lines.
- * 
+ *
  */
 static inline void wg_enable_int(wiegand_t *dev)
 {
@@ -142,18 +145,18 @@ static inline void wg_enable_int(wiegand_t *dev)
 
 /**
  * @brief Returns the card identification.
- * 
+ *
  */
 unsigned long wg_get_card_id(volatile unsigned long *codehigh, volatile unsigned long *codelow, char bitlength)
 {
-  
+
   if (bitlength==26) // EM tag
     return (*codelow & 0x1FFFFFE) >>1;
-  
-  if (bitlength==34) // Mifare 
+
+  if (bitlength==34) // Mifare
   {
     *codehigh = *codehigh & 0x03; // only need the 2 LSB of the codehigh
-    *codehigh <<= 30; // shift 2 LSB to MSB		
+    *codehigh <<= 30; // shift 2 LSB to MSB
     *codelow >>=1;
     return *codehigh | *codelow;
   }
@@ -162,41 +165,51 @@ unsigned long wg_get_card_id(volatile unsigned long *codehigh, volatile unsigned
 
 /**
  * @brief Process the temporary Wiegand buffer and decodes the data.
- * 
+ *
  */
 bool wg_do_conversion(wiegand_t *dev)
 {
-  unsigned long cardID;
-  uint64_t sysTick;
-  char highNibble;
-  char lowNibble;
-  
-  sysTick = xtimer_now_usec64();
-  
-  if ((sysTick - dev->wg_last_wiegand) > 25000) // if no more signal coming through after 25ms
+  uint64_t sysTick = xtimer_now_usec64();
+
+  // Here we check if we don't have recent activity
+  // TODO: This code smells. Please fix.
+  if(
+    sysTick-dev->wg_last_wiegand > 25000 &&
+    dev->wg_bit_count!=0 &&
+    dev->wg_bit_count==dev->last_bit_count) {
+    dev->ready = 1;
+  }
+  dev->wg_last_wiegand = sysTick;
+  dev->last_bit_count = dev->wg_bit_count;
+
+  if (dev->ready) // if no more signal coming through after 25ms
   {
     if (
       (dev->wg_bit_count==24) || (dev->wg_bit_count==26) || (dev->wg_bit_count==32) ||
       (dev->wg_bit_count==34) || (dev->wg_bit_count==8) || (dev->wg_bit_count==4))// bitCount for keypress=4 or 8, Wiegand 26=24 or 26, Wiegand 34=32 or 34
     {
-      dev->wg_card_temp >>= 1;			// shift right 1 bit to get back the real value - interrupt done 1 left shift in advance
-      if (dev->wg_bit_count>32)			// bit count more than 32 bits, shift high bits right to make adjustment
-        dev->wg_card_temp_high >>= 1;	
-      
-      if (dev->wg_bit_count==8)		// keypress wiegand with integrity
+      dev->wg_card_temp >>= 1;  // shift right 1 bit to get back the real value - interrupt done 1 left shift in advance
+      if (dev->wg_bit_count>32)  // bit count more than 32 bits, shift high bits right to make adjustment
+        dev->wg_card_temp_high >>= 1;
+
+      if (dev->wg_bit_count==8)  // keypress wiegand with integrity
       {
+        char highNibble;
+        char lowNibble;
         // 8-bit Wiegand keyboard data, high nibble is the "NOT" of low nibble
-        // eg if key 1 pressed, data=E1 in binary 11100001 , high nibble=1110 , low nibble = 0001 
+        // eg if key 1 pressed, data=E1 in binary 11100001 , high nibble=1110 , low nibble = 0001
         highNibble = (dev->wg_card_temp & 0xf0) >>4;
         lowNibble = (dev->wg_card_temp & 0x0f);
-        dev->type=dev->wg_bit_count;					
+        dev->type=dev->wg_bit_count;
         dev->wg_bit_count=0;
         dev->wg_card_temp=0;
         dev->wg_card_temp_high=0;
-        
+
         if (lowNibble == (~highNibble & 0x0f))		// check if low nibble matches the "NOT" of high nibble.
         {
           dev->code = (int)translate_enter_escape_key_press(lowNibble);
+          dev->ready = 0;
+          dev->last_bit_count = 0;
           return true;
         }
         else {
@@ -204,31 +217,36 @@ bool wg_do_conversion(wiegand_t *dev)
           dev->wg_bit_count=0;
           dev->wg_card_temp=0;
           dev->wg_card_temp_high=0;
+          dev->ready = 0;
+          dev->last_bit_count = 0;
           return false;
         }
-        
+
         // TODO: Handle validation failure case!
       }
       else if (4 == dev->wg_bit_count) {
         // 4-bit Wiegand codes have no data integrity check so we just
         // read the LOW nibble.
         dev->code = (int)translate_enter_escape_key_press(dev->wg_card_temp & 0x0000000F);
-        
+
         dev->type = dev->wg_bit_count;
         dev->wg_bit_count = 0;
         dev->wg_card_temp = 0;
         dev->wg_card_temp_high = 0;
-        
+        dev->ready = 0;
+        dev->last_bit_count = 0;
+
         return true;
       }
       else // wiegand 26 or wiegand 34
       {
-        cardID = wg_get_card_id (&(dev->wg_card_temp_high), &(dev->wg_card_temp), dev->wg_bit_count);
+        dev->code = wg_get_card_id (&(dev->wg_card_temp_high), &(dev->wg_card_temp), dev->wg_bit_count);
         dev->type=dev->wg_bit_count;
         dev->wg_bit_count=0;
         dev->wg_card_temp=0;
         dev->wg_card_temp_high=0;
-        dev->code=cardID;
+        dev->ready = 0;
+        dev->last_bit_count = 0;
         return true;
       }
     }
@@ -236,9 +254,11 @@ bool wg_do_conversion(wiegand_t *dev)
     {
       // well time over 25 ms and bitCount !=8 , !=26, !=34 , must be noise or nothing then.
       dev->wg_last_wiegand=sysTick;
-      dev->wg_bit_count=0;			
+      dev->wg_bit_count=0;
       dev->wg_card_temp=0;
       dev->wg_card_temp_high=0;
+      dev->ready = 0;
+      dev->last_bit_count = 0;
       return false;
     }
   }
@@ -250,7 +270,7 @@ bool wg_do_conversion(wiegand_t *dev)
 
 /**
  * @brief Tries to process the wiegand data and returns true if successfull.
- * 
+ *
  */
 bool wg_available(wiegand_t *dev) {
   bool ret;
@@ -261,8 +281,17 @@ bool wg_available(wiegand_t *dev) {
 }
 
 /**
+ * This function pools every 10ms to check if there is new data
+ */
+void *wg_pooling_thread(void *arg)
+{
+  (void) arg;
+  return NULL;
+}
+
+/**
  * @brief Initializes the wiegand device.
- * 
+ *
  */
 int16_t wg_init(wiegand_t *dev, const wiegand_params_t *params)
 {
@@ -272,8 +301,12 @@ int16_t wg_init(wiegand_t *dev, const wiegand_params_t *params)
   dev->wg_card_temp = 0;
   dev->wg_last_wiegand = 0;
   dev->wg_bit_count = 0;
+  dev->ready = 0;
+  dev->last_bit_count = 0;
   dev->conn = params;
-  
+
+  gpio_init(HSSV_ATSAMR21_GPIO, GPIO_OUT);
+
   if(gpio_init_int(
     dev->conn->d0,
     GPIO_IN,
@@ -284,7 +317,7 @@ int16_t wg_init(wiegand_t *dev, const wiegand_params_t *params)
   {
     return -1;
   }
-  
+
   if(gpio_init_int(
     dev->conn->d1,
     GPIO_IN,
@@ -295,6 +328,6 @@ int16_t wg_init(wiegand_t *dev, const wiegand_params_t *params)
   {
     return -1;
   }
-  
+
   return 0;
 }
