@@ -16,11 +16,10 @@
  * @}
  */
 
-#ifdef MODULE_PERIPH_CAN
 #include "can/device.h"
 #include "can_params.h"
 
-#define CANDEV_NUMOF ((sizeof(candev_params) / sizeof(candev_params[0])))
+#define CANDEV_NUMOF (ARRAY_SIZE(candev_params))
 
 #ifndef CANDEV_STACKSIZE
 #define CANDEV_STACKSIZE (THREAD_STACKSIZE_DEFAULT + THREAD_EXTRA_STACKSIZE_PRINTF)
@@ -52,6 +51,3 @@ void auto_init_periph_can(void) {
                         candev_params[i].name, &candev_dev[i]);
     }
 }
-#else
-typedef int dont_be_pedantic;
-#endif

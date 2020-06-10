@@ -22,20 +22,31 @@ include $(RIOTMAKE)/tools/serial.inc.mk
 # Default for these boards is to use a CMSIS-DAP programmer
 DEBUG_ADAPTER ?= dap
 
-# EDBG can only be used with a compatible Atmel programmer
-ifeq ($(DEBUG_ADAPTER),dap)
-  # set this to either openocd or edbg
-  PROGRAMMER ?= edbg
-else
-  PROGRAMMER ?= openocd
-endif
-
-# use edbg if selected and a device type has been set
-ifeq ($(PROGRAMMER),edbg)
-  ifneq (,$(EDBG_DEVICE_TYPE))
-    include $(RIOTMAKE)/tools/edbg.inc.mk
+# If no programmer is set, select a default programmer
+ifeq ($(PROGRAMMER),)
+  # EDBG can only be used with a compatible Atmel programmer
+  ifeq ($(DEBUG_ADAPTER),dap)
+    # set this to either openocd, jlink or edbg
+    PROGRAMMER ?= edbg
+  else ifeq ($(DEBUG_ADAPTER),jlink)
+    # only use JLinkExe if it's installed
+    ifneq (,$(shell which JLinkExe))
+      PROGRAMMER ?= jlink
+    else
+      PROGRAMMER ?= openocd
+    endif
+  else
+    PROGRAMMER ?= openocd
   endif
 endif
 
-# this board uses openocd for debug and possibly flashing
-include $(RIOTMAKE)/tools/openocd.inc.mk
+ifeq ($(PROGRAMMER),edbg)
+  # use edbg for flashing
+  include $(RIOTMAKE)/tools/edbg.inc.mk
+else ifeq ($(PROGRAMMER),jlink)
+  # this board uses J-Link for debug and possibly flashing
+  include $(RIOTMAKE)/tools/jlink.inc.mk
+else ifeq ($(PROGRAMMER),openocd)
+  # this board uses openocd for debug and possibly flashing
+  include $(RIOTMAKE)/tools/openocd.inc.mk
+endif

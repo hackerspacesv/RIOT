@@ -7,9 +7,7 @@
  */
 
 /**
- * @defgroup    boards_nucleo-f767zi STM32 Nucleo-F767ZI
- * @ingroup     boards_common_nucleo144
- * @brief       Support for the STM32 Nucleo-F767ZI
+ * @ingroup     boards_nucleo-f767zi
  * @{
  *
  * @file
@@ -26,6 +24,8 @@
 #include "cfg_i2c1_pb8_pb9.h"
 #include "cfg_spi_divtable.h"
 #include "cfg_rtt_default.h"
+#include "cfg_timer_tim2.h"
+#include "cfg_usb_otg_fs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +35,6 @@ extern "C" {
  * @name    DMA streams configuration
  * @{
  */
-#ifdef MODULE_PERIPH_DMA
 static const dma_conf_t dma_config[] = {
     { .stream = 4 },    /* DMA1 Stream 4 - USART3_TX */
     { .stream = 14 },   /* DMA2 Stream 6 - USART6_TX */
@@ -48,27 +47,7 @@ static const dma_conf_t dma_config[] = {
 #define DMA_2_ISR  isr_dma1_stream6
 #define DMA_3_ISR  isr_dma2_stream0
 
-#define DMA_NUMOF           (sizeof(dma_config) / sizeof(dma_config[0]))
-#endif
-/** @} */
-
-/**
- * @name    Timer configuration
- * @{
- */
-static const timer_conf_t timer_config[] = {
-    {
-        .dev      = TIM2,
-        .max      = 0xffffffff,
-        .rcc_mask = RCC_APB1ENR_TIM2EN,
-        .bus      = APB1,
-        .irqn     = TIM2_IRQn
-    }
-};
-
-#define TIMER_0_ISR         isr_tim2
-
-#define TIMER_NUMOF         (sizeof(timer_config) / sizeof(timer_config[0]))
+#define DMA_NUMOF           ARRAY_SIZE(dma_config)
 /** @} */
 
 /**
@@ -124,7 +103,7 @@ static const uart_conf_t uart_config[] = {
 #define UART_1_ISR          (isr_usart6)
 #define UART_2_ISR          (isr_usart2)
 
-#define UART_NUMOF          (sizeof(uart_config) / sizeof(uart_config[0]))
+#define UART_NUMOF          ARRAY_SIZE(uart_config)
 /** @} */
 
 /**
@@ -137,11 +116,23 @@ static const uart_conf_t uart_config[] = {
 static const spi_conf_t spi_config[] = {
     {
         .dev      = SPI1,
+        /* PA7 is the default MOSI pin, as it is required for compatibility with
+         * Arduino(ish) shields. Sadly, it is also connected to the RMII_DV of
+         * Ethernet PHY. We work around this by remapping the MOSI to PB5 when
+         * the on-board Ethernet PHY is used.
+         */
+#ifdef MODULE_PERIPH_ETH
+        .mosi_pin = GPIO_PIN(PORT_B, 5),
+#else
         .mosi_pin = GPIO_PIN(PORT_A, 7),
+#endif
         .miso_pin = GPIO_PIN(PORT_A, 6),
         .sclk_pin = GPIO_PIN(PORT_A, 5),
         .cs_pin   = GPIO_UNDEF,
-        .af       = GPIO_AF5,
+        .mosi_af  = GPIO_AF5,
+        .miso_af  = GPIO_AF5,
+        .sclk_af  = GPIO_AF5,
+        .cs_af    = GPIO_AF5,
         .rccmask  = RCC_APB2ENR_SPI1EN,
         .apbbus   = APB2
     },
@@ -151,13 +142,16 @@ static const spi_conf_t spi_config[] = {
         .miso_pin = GPIO_PIN(PORT_E, 5),
         .sclk_pin = GPIO_PIN(PORT_E, 2),
         .cs_pin   = GPIO_UNDEF,
-        .af       = GPIO_AF5,
+        .mosi_af  = GPIO_AF5,
+        .miso_af  = GPIO_AF5,
+        .sclk_af  = GPIO_AF5,
+        .cs_af    = GPIO_AF5,
         .rccmask  = RCC_APB2ENR_SPI4EN,
         .apbbus   = APB2
     }
 };
 
-#define SPI_NUMOF           (sizeof(spi_config) / sizeof(spi_config[0]))
+#define SPI_NUMOF           ARRAY_SIZE(spi_config)
 /** @} */
 
 /**

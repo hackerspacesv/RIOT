@@ -34,13 +34,14 @@ extern "C" {
  */
 static const spi_conf_t spi_config[] = {
     {
-        .dev  = NRF_SPI0,
+        .dev  = NRF_SPIM0,
         .sclk = GPIO_PIN(0, 25),
         .mosi = GPIO_PIN(0, 23),
         .miso = GPIO_PIN(0, 24),
+        .ppi = 0,
     }
 };
-#define SPI_NUMOF           (sizeof(spi_config) / sizeof(spi_config[0]))
+#define SPI_NUMOF           ARRAY_SIZE(spi_config)
 /** @} */
 
 /**

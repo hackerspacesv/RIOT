@@ -91,7 +91,6 @@ extern "C" {
  * @name    RTC configuration
  * @{
  */
-#define RTC_NUMOF           (1U)
 #define RTC_DEV             RTC->MODE2
 /** @} */
 
@@ -99,7 +98,6 @@ extern "C" {
  * @name    RTT configuration
  * @{
  */
-#define RTT_NUMOF           (1U)
 #define RTT_DEV             RTC->MODE0
 #define RTT_IRQ             RTC_IRQn
 #define RTT_IRQ_PRIO        10
@@ -120,10 +118,10 @@ static const tc32_conf_t timer_config[] = {
         .pm_mask        = PM_APBCMASK_TC3,
         .gclk_ctrl      = GCLK_CLKCTRL_ID_TCC2_TC3,
 #if CLOCK_USE_PLL || CLOCK_USE_XOSC32_DFLL
-        .gclk_src       = GCLK_CLKCTRL_GEN(1),
+        .gclk_src       = SAM0_GCLK_1MHZ,
         .prescaler      = TC_CTRLA_PRESCALER_DIV1,
 #else
-        .gclk_src       = GCLK_CLKCTRL_GEN(0),
+        .gclk_src       = SAM0_GCLK_MAIN,
         .prescaler      = TC_CTRLA_PRESCALER_DIV8,
 #endif
         .flags          = TC_CTRLA_MODE_COUNT16,
@@ -134,10 +132,10 @@ static const tc32_conf_t timer_config[] = {
         .pm_mask        = PM_APBCMASK_TC4 | PM_APBCMASK_TC5,
         .gclk_ctrl      = GCLK_CLKCTRL_ID_TC4_TC5,
 #if CLOCK_USE_PLL || CLOCK_USE_XOSC32_DFLL
-        .gclk_src       = GCLK_CLKCTRL_GEN(1),
+        .gclk_src       = SAM0_GCLK_1MHZ,
         .prescaler      = TC_CTRLA_PRESCALER_DIV1,
 #else
-        .gclk_src       = GCLK_CLKCTRL_GEN(0),
+        .gclk_src       = SAM0_GCLK_MAIN,
         .prescaler      = TC_CTRLA_PRESCALER_DIV8,
 #endif
         .flags          = TC_CTRLA_MODE_COUNT32,
@@ -150,26 +148,20 @@ static const tc32_conf_t timer_config[] = {
 #define TIMER_0_ISR         isr_tc3
 #define TIMER_1_ISR         isr_tc4
 
-#define TIMER_NUMOF         (sizeof(timer_config) / sizeof(timer_config[0]))
+#define TIMER_NUMOF         ARRAY_SIZE(timer_config)
 /** @} */
 
 /**
  * @name ADC Configuration
  * @{
  */
-#define ADC_0_EN                           1
-#define ADC_MAX_CHANNELS                   14
-/* ADC 0 device configuration */
-#define ADC_0_DEV                          ADC
-#define ADC_0_IRQ                          ADC_IRQn
 
-/* ADC 0 Default values */
-#define ADC_0_CLK_SOURCE                   0 /* GCLK_GENERATOR_0 */
-#define ADC_0_PRESCALER                    ADC_CTRLB_PRESCALER_DIV512
+/* ADC Default values */
+#define ADC_PRESCALER                       ADC_CTRLB_PRESCALER_DIV512
 
-#define ADC_0_NEG_INPUT                    ADC_INPUTCTRL_MUXNEG_GND
-#define ADC_0_GAIN_FACTOR_DEFAULT          ADC_INPUTCTRL_GAIN_1X
-#define ADC_0_REF_DEFAULT                  ADC_REFCTRL_REFSEL_INT1V
+#define ADC_NEG_INPUT                       ADC_INPUTCTRL_MUXNEG_GND
+#define ADC_GAIN_FACTOR_DEFAULT             ADC_INPUTCTRL_GAIN_1X
+#define ADC_REF_DEFAULT                     ADC_REFCTRL_REFSEL_INT1V
 
 static const adc_conf_chan_t adc_channels[] = {
     /* port, pin, muxpos */
@@ -178,8 +170,7 @@ static const adc_conf_chan_t adc_channels[] = {
     {GPIO_PIN(PA, 8), ADC_INPUTCTRL_MUXPOS_PIN16},
 };
 
-#define ADC_0_CHANNELS                     (3U)
-#define ADC_NUMOF                          ADC_0_CHANNELS
+#define ADC_NUMOF                           ARRAY_SIZE(adc_channels)
 /** @} */
 
 /**
@@ -188,28 +179,37 @@ static const adc_conf_chan_t adc_channels[] = {
  */
 #define PWM_0_EN            1
 #define PWM_1_EN            1
-#define PWM_NUMOF           (PWM_0_EN + PWM_1_EN)
-#define PWM_MAX_CHANNELS    2
 
-/* PWM device configuration */
-#if PWM_NUMOF
-static const pwm_conf_t pwm_config[] = {
 #if PWM_0_EN
-    {TCC1, {
-        /* GPIO pin, MUX value, TCC channel */
-        {GPIO_PIN(PA, 6), GPIO_MUX_E, 0},
-        {GPIO_PIN(PA, 7), GPIO_MUX_E, 1}
-    }},
-#endif
-#if PWM_1_EN
-    {TCC0, {
-        /* GPIO pin, MUX value, TCC channel */
-        {GPIO_PIN(PA, 18), GPIO_MUX_F, 2},
-        {GPIO_PIN(PA, 19), GPIO_MUX_F, 3}
-    }},
-#endif
+/* PWM0 channels */
+static const pwm_conf_chan_t pwm_chan0_config[] = {
+    /* GPIO pin, MUX value, TCC channel */
+    {GPIO_PIN(PA, 6), GPIO_MUX_E, 0},
+    {GPIO_PIN(PA, 7), GPIO_MUX_E, 1},
 };
 #endif
+#if PWM_1_EN
+/* PWM1 channels */
+static const pwm_conf_chan_t pwm_chan1_config[] = {
+    /* GPIO pin, MUX value, TCC channel */
+    {GPIO_PIN(PA, 18), GPIO_MUX_F, 2},
+    {GPIO_PIN(PA, 19), GPIO_MUX_F, 3},
+};
+#endif
+
+
+/* PWM device configuration */
+static const pwm_conf_t pwm_config[] = {
+#if PWM_0_EN
+    {TCC1, pwm_chan0_config, ARRAY_SIZE(pwm_chan0_config)},
+#endif
+#if PWM_1_EN
+    {TCC0, pwm_chan1_config, ARRAY_SIZE(pwm_chan1_config)},
+#endif
+};
+
+/* number of devices that are actually defined */
+#define PWM_NUMOF           ARRAY_SIZE(pwm_config)
 /** @} */
 
 /**
@@ -226,11 +226,12 @@ static const spi_conf_t spi_config[] = {
         .mosi_mux = GPIO_MUX_F,
         .clk_mux  = GPIO_MUX_F,
         .miso_pad = SPI_PAD_MISO_0,
-        .mosi_pad = SPI_PAD_MOSI_2_SCK_3
+        .mosi_pad = SPI_PAD_MOSI_2_SCK_3,
+        .gclk_src = SAM0_GCLK_MAIN,
     }
 };
 
-#define SPI_NUMOF           (sizeof(spi_config) / sizeof(spi_config[0]))
+#define SPI_NUMOF           ARRAY_SIZE(spi_config)
 /** @} */
 
 /**
@@ -244,11 +245,11 @@ static const i2c_conf_t i2c_config[] = {
         .scl_pin  = GPIO_PIN(PA, 17),
         .sda_pin  = GPIO_PIN(PA, 16),
         .mux      = GPIO_MUX_D,
-        .gclk_src = GCLK_CLKCTRL_GEN_GCLK0,
+        .gclk_src = SAM0_GCLK_MAIN,
         .flags    = I2C_FLAG_NONE
      }
 };
-#define I2C_NUMOF          (sizeof(i2c_config) / sizeof(i2c_config[0]))
+#define I2C_NUMOF          ARRAY_SIZE(i2c_config)
 
 /**
  * @name Random Number Generator configuration

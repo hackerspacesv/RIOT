@@ -22,6 +22,7 @@
 
 #include "periph_cpu.h"
 #include "cfg_clock_32_1.h"
+#include "cfg_i2c_default.h"
 #include "cfg_rtt_default.h"
 #include "cfg_timer_default.h"
 
@@ -35,29 +36,14 @@ extern "C" {
  */
 static const spi_conf_t spi_config[] = {
     {
-        .dev  = NRF_SPI0,
+        .dev  = NRF_SPIM0,
         .sclk = 15,
         .mosi = 13,
-        .miso = 14
+        .miso = 14,
     }
 };
 
-#define SPI_NUMOF           (sizeof(spi_config) / sizeof(spi_config[0]))
-/** @} */
-
-/**
- * @name    I2C configuration
- * @{
- */
-static const i2c_conf_t i2c_config[] = {
-    {
-        .dev = NRF_TWIM1,
-        .scl = 27,
-        .sda = 26,
-        .speed = I2C_SPEED_NORMAL
-    }
-};
-#define I2C_NUMOF           (sizeof(i2c_config) / sizeof(i2c_config[0]))
+#define SPI_NUMOF           ARRAY_SIZE(spi_config)
 /** @} */
 
 #ifdef __cplusplus

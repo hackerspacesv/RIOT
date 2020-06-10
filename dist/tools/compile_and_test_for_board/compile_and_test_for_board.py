@@ -34,10 +34,11 @@ Usage
 ```
 usage: compile_and_test_for_board.py [-h] [--applications APPLICATIONS]
                                      [--applications-exclude APPLICATIONS_EXCLUDE]
-                                     [--no-test]
+                                     [--no-test] [--with-test-only]
                                      [--loglevel {debug,info,warning,error,fatal,critical}]
                                      [--incremental] [--clean-after]
                                      [--compile-targets COMPILE_TARGETS]
+                                     [--flash-targets FLASH_TARGETS]
                                      [--test-targets TEST_TARGETS]
                                      [--test-available-targets TEST_AVAILABLE_TARGETS]
                                      [--jobs JOBS]
@@ -59,6 +60,8 @@ optional arguments:
                         applications. Also applied after "--applications".
                         (default: None)
   --no-test             Disable executing tests (default: False)
+  --with-test-only      Only compile applications that have a test (default:
+                        False)
   --loglevel {debug,info,warning,error,fatal,critical}
                         Python logger log level (default: info)
   --incremental         Do not rerun successful compilation and tests
@@ -66,6 +69,8 @@ optional arguments:
   --clean-after         Clean after running each test (default: False)
   --compile-targets COMPILE_TARGETS
                         List of make targets to compile (default: clean all)
+  --flash-targets FLASH_TARGETS
+                        List of make targets to flash (default: flash-only)
   --test-targets TEST_TARGETS
                         List of make targets to run test (default: test)
   --test-available-targets TEST_AVAILABLE_TARGETS
@@ -101,6 +106,33 @@ class ErrorInTest(Exception):
         super().__init__(message)
         self.application = application
         self.errorfile = errorfile
+
+
+def _expand_apps_directories(apps_dirs, riotdir, skip=False):
+    """Expand the list of applications using wildcards."""
+    # Get the full list of RIOT applications in riotdir
+    _riot_applications = _riot_applications_dirs(riotdir)
+
+    if apps_dirs is None:
+        if skip is True:
+            return []
+        return _riot_applications
+
+    ret = []
+    for app_dir in apps_dirs:
+        if os.path.isdir(app_dir):
+            # Case where the application directory exists: don't use globbing.
+            # the application directory can also be outside of riotdir and
+            # relative to it.
+            ret += [app_dir]
+        else:
+            ret += [
+                os.path.relpath(el, riotdir)
+                for el in glob.glob(os.path.join(riotdir, app_dir))
+                if os.path.relpath(el, riotdir) in _riot_applications
+            ]
+
+    return ret
 
 
 def apps_directories(riotdir, apps_dirs=None, apps_dirs_skip=None):
@@ -190,6 +222,7 @@ class RIOTApplication():
     MAKEFLAGS = ('RIOT_CI_BUILD=1', 'CC_NOCOLOR=1', '--no-print-directory')
 
     COMPILE_TARGETS = ('clean', 'all',)
+    FLASH_TARGETS = ('flash-only',)
     TEST_TARGETS = ('test',)
     TEST_AVAILABLE_TARGETS = ('test/available',)
 
@@ -220,9 +253,11 @@ class RIOTApplication():
         try:
             self.make(self.TEST_AVAILABLE_TARGETS)
         except subprocess.CalledProcessError:
-            return False
+            has_test = False
         else:
-            return True
+            has_test = True
+        self.logger.info('Application has test: %s', has_test)
+        return has_test
 
     def board_is_supported(self):
         """Return if current board is supported."""
@@ -273,7 +308,9 @@ class RIOTApplication():
             return (str(err), err.application.appdir, err.errorfile)
 
     def compilation_and_test(self, clean_after=False, runtest=True,
-                             incremental=False, jobs=False):
+                             incremental=False, jobs=False,
+                             with_test_only=False):
+        # pylint:disable=too-many-arguments
         """Compile and execute test if available.
 
         Checks for board supported/enough memory, compiles.
@@ -301,6 +338,13 @@ class RIOTApplication():
             self._write_resultfile('skip', 'not_enough_memory')
             return
 
+        has_test = self.has_test()
+
+        if with_test_only and not has_test:
+            create_directory(self.resultdir, clean=True)
+            self._write_resultfile('skip', 'disabled_has_no_tests')
+            return
+
         # Normal case for supported apps
         create_directory(self.resultdir, clean=not incremental)
 
@@ -317,9 +361,9 @@ class RIOTApplication():
             self.clean_intermediates()
 
         if runtest:
-            if self.has_test():
+            if has_test:
                 setuptasks = collections.OrderedDict(
-                    [('flash', ['flash-only'])])
+                    [('flash', self.FLASH_TARGETS)])
                 self.make_with_outfile('test', self.TEST_TARGETS,
                                        save_output=True, setuptasks=setuptasks)
                 if clean_after:
@@ -556,6 +600,8 @@ PARSER.add_argument(
 )
 PARSER.add_argument('--no-test', action='store_true', default=False,
                     help='Disable executing tests')
+PARSER.add_argument('--with-test-only', action='store_true', default=False,
+                    help='Only compile applications that have a test')
 PARSER.add_argument('--loglevel', choices=LOG_LEVELS, default='info',
                     help='Python logger log level')
 PARSER.add_argument('--incremental', action='store_true', default=False,
@@ -566,6 +612,9 @@ PARSER.add_argument('--clean-after', action='store_true', default=False,
 PARSER.add_argument('--compile-targets', type=list_from_string,
                     default=' '.join(RIOTApplication.COMPILE_TARGETS),
                     help='List of make targets to compile')
+PARSER.add_argument('--flash-targets', type=list_from_string,
+                    default=' '.join(RIOTApplication.FLASH_TARGETS),
+                    help='List of make targets to flash')
 PARSER.add_argument('--test-targets', type=list_from_string,
                     default=' '.join(RIOTApplication.TEST_TARGETS),
                     help='List of make targets to run test')
@@ -578,10 +627,8 @@ PARSER.add_argument(
     help="Parallel building (0 means not limit, like '--jobs')")
 
 
-def main():
+def main(args):
     """For one board, compile all examples and tests and run test on board."""
-    args = PARSER.parse_args()
-
     logger = logging.getLogger(args.board)
     if args.loglevel:
         loglevel = logging.getLevelName(args.loglevel.upper())
@@ -595,9 +642,14 @@ def main():
     board = check_is_board(args.riot_directory, args.board)
     logger.debug('board: %s', board)
 
-    app_dirs = apps_directories(args.riot_directory,
-                                apps_dirs=args.applications,
-                                apps_dirs_skip=args.applications_exclude)
+    # Expand application directories: allows use of glob in application names
+    apps_dirs = _expand_apps_directories(args.applications,
+                                         args.riot_directory)
+    apps_dirs_skip = _expand_apps_directories(args.applications_exclude,
+                                              args.riot_directory, skip=True)
+
+    app_dirs = apps_directories(args.riot_directory, apps_dirs=apps_dirs,
+                                apps_dirs_skip=apps_dirs_skip)
 
     logger.debug('app_dirs: %s', app_dirs)
     logger.debug('resultdir: %s', args.result_directory)
@@ -605,6 +657,7 @@ def main():
 
     # Overwrite the compile/test targets from command line arguments
     RIOTApplication.COMPILE_TARGETS = args.compile_targets
+    RIOTApplication.FLASH_TARGETS = args.flash_targets
     RIOTApplication.TEST_TARGETS = args.test_targets
     RIOTApplication.TEST_AVAILABLE_TARGETS = args.test_available_targets
 
@@ -617,7 +670,8 @@ def main():
     errors = [app.run_compilation_and_test(clean_after=args.clean_after,
                                            runtest=not args.no_test,
                                            incremental=args.incremental,
-                                           jobs=args.jobs)
+                                           jobs=args.jobs,
+                                           with_test_only=args.with_test_only)
               for app in applications]
     errors = [e for e in errors if e is not None]
     num_errors = len(errors)
@@ -634,4 +688,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(PARSER.parse_args())

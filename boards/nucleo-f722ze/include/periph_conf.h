@@ -7,9 +7,7 @@
  */
 
 /**
- * @defgroup    boards_nucleo-f722ze STM32 Nucleo-F722ZE
- * @ingroup     boards_common_nucleo144
- * @brief       Support for the STM32 Nucleo-F722ZE
+ * @ingroup     boards_nucleo-f722ze
  * @{
  *
  * @file
@@ -25,29 +23,12 @@
 #include "f7/cfg_clock_216_8_1.h"
 #include "cfg_i2c1_pb8_pb9.h"
 #include "cfg_rtt_default.h"
+#include "cfg_timer_tim2.h"
+#include "cfg_usb_otg_fs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @name    Timer configuration
- * @{
- */
-static const timer_conf_t timer_config[] = {
-    {
-        .dev      = TIM2,
-        .max      = 0xffffffff,
-        .rcc_mask = RCC_APB1ENR_TIM2EN,
-        .bus      = APB1,
-        .irqn     = TIM2_IRQn
-    }
-};
-
-#define TIMER_0_ISR         isr_tim2
-
-#define TIMER_NUMOF         (sizeof(timer_config) / sizeof(timer_config[0]))
-/** @} */
 
 /**
  * @name    UART configuration
@@ -105,7 +86,7 @@ static const uart_conf_t uart_config[] = {
 #define UART_2_ISR          (isr_usart2)
 #define UART_2_DMA_ISR      (isr_dma1_stream4)
 
-#define UART_NUMOF          (sizeof(uart_config) / sizeof(uart_config[0]))
+#define UART_NUMOF          ARRAY_SIZE(uart_config)
 /** @} */
 
 #ifdef __cplusplus

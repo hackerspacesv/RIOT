@@ -1,15 +1,14 @@
 include ../Makefile.tests_common
 
-# avr8, msp430, esp8266 and mips don't support ssp (yet)
-BOARD_BLACKLIST := arduino-duemilanove arduino-leonardo \
-                   arduino-mega2560 arduino-nano \
-                   arduino-uno chronos esp8266-esp-12x esp8266-olimex-mod \
-                   esp8266-sparkfun-thing jiminy-mega256rfr2 mega-xplained \
-                   msb-430 msb-430h pic32-clicker pic32-wifire telosb \
-                   waspmote-pro wsn430-v1_3b wsn430-v1_4 z1
-
 USEMODULE += ssp
 
-TEST_ON_CI_WHITELIST += all
+# This test intentionally crashes the firmware and when using a board with a
+# preflashed bootloader, it cannot be reflashed automatically afterwards.
+FEATURES_BLACKLIST += bootloader_arduino
+FEATURES_BLACKLIST += bootloader_nrfutil
 
 include $(RIOTBASE)/Makefile.include
+
+ifneq (,$(shell $(CC) --help=warnings | grep '\-Wstringop-overflow='))
+  CFLAGS += -Wstringop-overflow=0
+endif

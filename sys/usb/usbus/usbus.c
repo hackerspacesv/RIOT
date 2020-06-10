@@ -16,6 +16,9 @@
  * @}
  */
 
+#define USB_H_USER_IS_RIOT_INTERNAL
+
+#include "kernel_defines.h"
 #include "bitarithm.h"
 #include "event.h"
 #include "thread.h"
@@ -73,10 +76,10 @@ uint16_t usbus_add_string_descriptor(usbus_t *usbus, usbus_string_t *desc,
     return desc->idx;
 }
 
-void usbus_add_conf_descriptor(usbus_t *usbus, usbus_hdr_gen_t *hdr_gen)
+void usbus_add_conf_descriptor(usbus_t *usbus, usbus_descr_gen_t *descr_gen)
 {
-    hdr_gen->next = usbus->hdr_gen;
-    usbus->hdr_gen = hdr_gen;
+    descr_gen->next = usbus->descr_gen;
+    usbus->descr_gen = descr_gen;
 }
 
 static usbus_handler_t *_ep_to_handler(usbus_t *usbus, usbdev_ep_t *ep)
@@ -125,6 +128,18 @@ void usbus_register_event_handler(usbus_t *usbus, usbus_handler_t *handler)
         last = &(*last)->next;
     }
     *last = handler;
+}
+
+usbus_endpoint_t *usbus_interface_find_endpoint(usbus_interface_t *interface,
+                                                usb_ep_type_t type,
+                                                usb_ep_dir_t dir)
+{
+    for (usbus_endpoint_t *uep = interface->ep; uep; uep = uep->next) {
+        if (uep->ep->type == type && uep->ep->dir == dir) {
+            return uep;
+        }
+    }
+    return NULL;
 }
 
 usbus_endpoint_t *usbus_add_endpoint(usbus_t *usbus, usbus_interface_t *iface,
@@ -225,20 +240,20 @@ static void *_usbus_thread(void *args)
     usbdev_init(dev);
 
     usbus_add_string_descriptor(usbus, &usbus->config,
-                                USB_CONFIG_CONFIGURATION_STR);
-    usbus_add_string_descriptor(usbus, &usbus->product, USB_CONFIG_PRODUCT_STR);
-    usbus_add_string_descriptor(usbus, &usbus->manuf, USB_CONFIG_MANUF_STR);
+                                CONFIG_USB_CONFIGURATION_STR);
+    usbus_add_string_descriptor(usbus, &usbus->product, CONFIG_USB_PRODUCT_STR);
+    usbus_add_string_descriptor(usbus, &usbus->manuf, CONFIG_USB_MANUF_STR);
 
     usbus->state = USBUS_STATE_DISCONNECT;
 
     /* Initialize handlers */
     _usbus_init_handlers(usbus);
 
-#if (USBUS_AUTO_ATTACH)
-    static const usbopt_enable_t _enable = USBOPT_ENABLE;
-    usbdev_set(dev, USBOPT_ATTACH, &_enable,
-               sizeof(usbopt_enable_t));
-#endif
+    if (IS_ACTIVE(CONFIG_USBUS_AUTO_ATTACH)) {
+        static const usbopt_enable_t _enable = USBOPT_ENABLE;
+        usbdev_set(dev, USBOPT_ATTACH, &_enable,
+                   sizeof(usbopt_enable_t));
+    }
 
     while (1) {
         thread_flags_t flags = thread_flags_wait_any(

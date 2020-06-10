@@ -3,7 +3,7 @@ MODULE = cpu
 DIRS += periph
 DIRS += vfs
 
-ifeq ($(shell uname -s),Darwin)
+ifeq ($(OS),Darwin)
   CFLAGS += -D_XOPEN_SOURCE=600 -D_DARWIN_C_SOURCE
 endif
 
@@ -15,6 +15,10 @@ ifneq (,$(filter socket_zep,$(USEMODULE)))
   DIRS += socket_zep
 endif
 
+ifneq (,$(filter stdio_native,$(USEMODULE)))
+  DIRS += stdio_native
+endif
+
 ifneq (,$(filter mtd_native,$(USEMODULE)))
   DIRS += mtd
 endif
@@ -22,8 +26,8 @@ endif
 ifneq (,$(filter can_linux,$(USEMODULE)))
   DIRS += can
 endif
-ifneq (,$(filter trace,$(USEMODULE)))
-	DIRS += trace
+ifneq (,$(filter backtrace,$(USEMODULE)))
+  DIRS += backtrace
 endif
 
 include $(RIOTBASE)/Makefile.base

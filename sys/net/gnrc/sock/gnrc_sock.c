@@ -14,7 +14,9 @@
  */
 
 #include <errno.h>
+#include <stdlib.h>
 
+#include "log.h"
 #include "net/af.h"
 #include "net/ipv6/hdr.h"
 #include "net/gnrc/ipv6.h"
@@ -26,6 +28,11 @@
 
 #include "sock_types.h"
 #include "gnrc_sock_internal.h"
+
+#ifdef MODULE_FUZZING
+extern gnrc_pktsnip_t *gnrc_pktbuf_fuzzptr;
+gnrc_pktsnip_t *gnrc_sock_prevpkt = NULL;
+#endif
 
 #ifdef MODULE_XTIMER
 #define _TIMEOUT_MAGIC      (0xF38A0B63U)
@@ -44,10 +51,39 @@ static void _callback_put(void *arg)
 }
 #endif
 
+#ifdef SOCK_HAS_ASYNC
+static void _netapi_cb(uint16_t cmd, gnrc_pktsnip_t *pkt, void *ctx)
+{
+    if (cmd == GNRC_NETAPI_MSG_TYPE_RCV) {
+        msg_t msg = { .type = GNRC_NETAPI_MSG_TYPE_RCV,
+                      .content = { .ptr = pkt } };
+        gnrc_sock_reg_t *reg = ctx;
+
+        if (mbox_try_put(&reg->mbox, &msg) < 1) {
+            LOG_WARNING("gnrc_sock: dropped message to %p (was full)\n",
+                        (void *)&reg->mbox);
+            /* packet could not be delivered so it should be dropped */
+            gnrc_pktbuf_release(pkt);
+            return;
+        }
+        if (reg->async_cb.generic) {
+            reg->async_cb.generic(reg, SOCK_ASYNC_MSG_RECV, reg->async_cb_arg);
+        }
+    }
+}
+#endif /* SOCK_HAS_ASYNC */
+
 void gnrc_sock_create(gnrc_sock_reg_t *reg, gnrc_nettype_t type, uint32_t demux_ctx)
 {
     mbox_init(&reg->mbox, reg->mbox_queue, SOCK_MBOX_SIZE);
+#ifdef SOCK_HAS_ASYNC
+    reg->async_cb.generic = NULL;
+    reg->netreg_cb.cb = _netapi_cb;
+    reg->netreg_cb.ctx = reg;
+    gnrc_netreg_entry_init_cb(&reg->entry, demux_ctx, &reg->netreg_cb);
+#else   /* SOCK_HAS_ASYNC */
     gnrc_netreg_entry_init_mbox(&reg->entry, demux_ctx, &reg->mbox);
+#endif  /* SOCK_HAS_ASYNC */
     gnrc_netreg_register(type, &reg->entry);
 }
 
@@ -56,6 +92,19 @@ ssize_t gnrc_sock_recv(gnrc_sock_reg_t *reg, gnrc_pktsnip_t **pkt_out,
 {
     gnrc_pktsnip_t *pkt, *netif;
     msg_t msg;
+
+    /* The fuzzing module is only enabled when building a fuzzing
+     * application from the fuzzing/ subdirectory. When using gnrc_sock
+     * the fuzzer assumes that gnrc_sock_recv is called in a loop. If it
+     * is called again and the previous return value was the special
+     * crafted fuzzing packet, the fuzzing application terminates.
+     *
+     * sock_async_event has its on fuzzing termination condition. */
+#if defined(MODULE_FUZZING) && !defined(MODULE_SOCK_ASYNC_EVENT)
+    if (gnrc_sock_prevpkt && gnrc_sock_prevpkt == gnrc_pktbuf_fuzzptr) {
+        exit(EXIT_SUCCESS);
+    }
+#endif
 
     if (reg->mbox.cib.mask != (SOCK_MBOX_SIZE - 1)) {
         return -EINVAL;
@@ -110,6 +159,16 @@ ssize_t gnrc_sock_recv(gnrc_sock_reg_t *reg, gnrc_pktsnip_t **pkt_out,
         remote->netif = (uint16_t)netif_hdr->if_pid;
     }
     *pkt_out = pkt; /* set out parameter */
+
+#if IS_ACTIVE(SOCK_HAS_ASYNC)
+    if (reg->async_cb.generic && cib_avail(&reg->mbox.cib)) {
+        reg->async_cb.generic(reg, SOCK_ASYNC_MSG_RECV, reg->async_cb_arg);
+    }
+#endif
+#ifdef MODULE_FUZZING
+    gnrc_sock_prevpkt = pkt;
+#endif
+
     return 0;
 }
 
@@ -120,6 +179,9 @@ ssize_t gnrc_sock_send(gnrc_pktsnip_t *payload, sock_ip_ep_t *local,
     kernel_pid_t iface = KERNEL_PID_UNDEF;
     gnrc_nettype_t type;
     size_t payload_len = gnrc_pkt_len(payload);
+#ifdef MODULE_GNRC_NETERR
+    unsigned status_subs = 0;
+#endif
 
     if (local->family != remote->family) {
         gnrc_pktbuf_release(payload);
@@ -172,7 +234,14 @@ ssize_t gnrc_sock_send(gnrc_pktsnip_t *payload, sock_ip_ep_t *local,
         LL_PREPEND(pkt, netif);
     }
 #ifdef MODULE_GNRC_NETERR
-    gnrc_neterr_reg(pkt);   /* no error should occur since pkt was created here */
+    /* cppcheck-suppress uninitvar
+     * (reason: pkt is initialized in AF_INET6 case above, otherwise function
+     * will return early) */
+    for (gnrc_pktsnip_t *ptr = pkt; ptr != NULL; ptr = ptr->next) {
+        /* no error should occur since pkt was created here */
+        gnrc_neterr_reg(ptr);
+        status_subs++;
+    }
 #endif
     if (!gnrc_netapi_dispatch_send(type, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
         /* this should not happen, but just in case */
@@ -180,17 +249,34 @@ ssize_t gnrc_sock_send(gnrc_pktsnip_t *payload, sock_ip_ep_t *local,
         return -EBADMSG;
     }
 #ifdef MODULE_GNRC_NETERR
-    msg_t err_report;
-    err_report.type = 0;
+    uint32_t last_status = GNRC_NETERR_SUCCESS;
 
-    while (err_report.type != GNRC_NETERR_MSG_TYPE) {
-        msg_try_receive(&err_report);
-        if (err_report.type != GNRC_NETERR_MSG_TYPE) {
-            msg_try_send(&err_report, sched_active_pid);
+    while (status_subs--) {
+        msg_t err_report;
+        err_report.type = 0;
+
+        while (err_report.type != GNRC_NETERR_MSG_TYPE) {
+            msg_try_receive(&err_report);
+            if (err_report.type != GNRC_NETERR_MSG_TYPE) {
+                msg_try_send(&err_report, sched_active_pid);
+            }
         }
-    }
-    if (err_report.content.value != GNRC_NETERR_SUCCESS) {
-        return (int)(-err_report.content.value);
+        if (err_report.content.value != last_status) {
+            int res = (int)(-err_report.content.value);
+
+            for (unsigned i = 0; i < status_subs; i++) {
+                err_report.type = 0;
+                /* remove remaining status reports from queue */
+                while (err_report.type != GNRC_NETERR_MSG_TYPE) {
+                    msg_try_receive(&err_report);
+                    if (err_report.type != GNRC_NETERR_MSG_TYPE) {
+                        msg_try_send(&err_report, sched_active_pid);
+                    }
+                }
+            }
+            return res;
+        }
+        last_status = err_report.content.value;
     }
 #endif
     return payload_len;

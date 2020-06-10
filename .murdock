@@ -1,6 +1,6 @@
 #!/bin/sh
 
-: ${TEST_BOARDS_AVAILABLE:="nrf52dk samr21-xpro"}
+: ${TEST_BOARDS_AVAILABLE:="esp32-wroom-32 nrf52dk samr21-xpro"}
 : ${TEST_BOARDS_LLVM_COMPILE:="iotlab-m3 native nrf52dk mulle nucleo-f401re samr21-xpro slstk3402a"}
 
 export RIOT_CI_BUILD=1
@@ -9,10 +9,28 @@ export CFLAGS_DBG=""
 export DLCACHE_DIR=${DLCACHE_DIR:-~/.dlcache}
 export ENABLE_TEST_CACHE=${ENABLE_TEST_CACHE:-1}
 
+# This is a work around for a bug in CCACHE which interacts very badly with
+# some features of RIOT and of murdock. The result is that ccache is
+# ineffective (i.e. objects are never reused, resulting in extreme cache miss
+# rate) and murdock becomes slow.
+#
+# - CCACHE thinks that -gz by itself enables debugging, which is not true.
+#   see https://github.com/ccache/ccache/issues/464
+#   - When debug info is included, CCACHE hashes the file paths, as these
+#     influence the debug information (the name of compile units and/or their
+#     "comp_dir" attribute)
+# - Riot does not set -fdebug-prefix-map. This is not that easy as it may not
+#   be supported in every toolchain (some are quite old).
+# - Murdock builds PRs in different directories each time.
+#
+# It is only the combination of these three factors which causes this bug.
+export OPTIONAL_CFLAGS_BLACKLIST="-gz"
+
 NIGHTLY=${NIGHTLY:-0}
 RUN_TESTS=${RUN_TESTS:-${NIGHTLY}}
 
-DWQ_ENV="-E BOARDS -E APPS -E NIGHTLY -E RUN_TESTS -E ENABLE_TEST_CACHE -E TEST_HASH"
+DWQ_ENV="-E BOARDS -E APPS -E NIGHTLY -E RUN_TESTS -E ENABLE_TEST_CACHE
+         -E TEST_HASH -E CI_PULL_LABELS"
 
 check_label() {
     local label="${1}"
@@ -32,6 +50,14 @@ check_label() {
 error() {
     echo "$@"
     exit 1
+}
+
+# true if "$2" starts with "$1", false otherwise
+startswith() {
+  case "${2}" in
+    ${1}*) true ;;
+    *) false ;;
+  esac
 }
 
 # if MURDOCK_HOOK is set, this function will execute it and pass on all it's
@@ -143,6 +169,7 @@ get_app_board_toolchain_pairs() {
 
 # use dwqc to create full "appdir board toolchain" compile job list
 get_compile_jobs() {
+    check_label "CI: skip compile test" && return
     get_apps | \
         dwqc ${DWQ_ENV} -s \
         ${DWQ_JOBID:+--subjob} \
@@ -203,7 +230,6 @@ compile() {
     # sanity checks
     [ $# -ne 2 ] && error "$0: compile: invalid parameters (expected \$appdir \$board:\$toolchain)"
     [ ! -d "$appdir" ] && error "$0: compile: error: application directory \"$appdir\" doesn't exist"
-    [ ! -d "boards/$board" ] && error "$0: compile: error: board directory \"boards/$board\" doesn't exist"
 
     # compile
     CCACHE_BASEDIR="$(pwd)" BOARD=$board TOOLCHAIN=$toolchain RIOT_CI_BUILD=1 \
@@ -247,19 +273,33 @@ test_job() {
     local appdir=$1
     local board=$(echo $2 | cut -f 1 -d':')
     local toolchain=$(echo $2 | cut -f 2 -d':')
-    local flashfile="$3"
 
-    [ ! -f "$flashfile" ] && {
-        echo "$0: _test(): flashfile \"$flashfile\" doesn't exist!"
-        return 1
-    }
+    # interpret any extra arguments as file names.
+    # They will be sent along with the job to the test worker
+    # and stored in the application's binary folder.
+    shift 2
+    local files=""
+    for filename in "$@"; do
+        # check if the file is within $(BINDIR)
+        if startswith "${BINDIR}" "${filename}"; then
+          # get relative (to $(BINDIR) path
+          local relpath="$(realpath --relative-to ${BINDIR} ${filename})"
+        else
+          error "$0: error: extra test files not within \${BINDIR}!"
+        fi
+
+        # set remote file path.
+        # currently, the test workers build in the default build path.
+        local remote_bindir="${appdir}/bin/${board}"
+        files="${files} --file ${filename}:${remote_bindir}/${relpath}"
+    done
 
     dwqc \
         ${DWQ_ENV} \
         ${DWQ_JOBID:+--subjob} \
-        --file $flashfile:$appdir/bin/${board}/$(basename $flashfile) \
         --queue ${TEST_QUEUE:-$board} \
         --maxfail 1 \
+        $files \
         "./.murdock run_test $appdir $board:$toolchain"
 }
 
@@ -288,24 +328,13 @@ run_test() {
 
 # execute static tests
 static_tests() {
-    local repo=${CI_BASE_REPO:-https://github.com/RIOT-OS/RIOT}
-    local branch=${CI_BASE_BRANCH:-master}
-
     print_worker
-
-    OUT="$(git remote add upstream $repo 2>&1 && git fetch upstream ${branch}:${branch} 2>&1)"
-    RES=$?
-    if [ $RES -ne 0 ]; then
-        echo "$OUT"
-        exit 1
-    fi
-
-    BUILDTEST_MCU_GROUP=static-tests ./dist/tools/ci/build_and_test.sh
+    ./dist/tools/ci/static_tests.sh
 }
 
 get_non_compile_jobs() {
     [ "$STATIC_TESTS" = "1" ] && \
-        echo "$0 static_tests###{ \"jobdir\" : \"exclusive\" }"
+        echo "$0 static_tests"
 }
 
 get_jobs() {

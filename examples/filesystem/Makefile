@@ -6,17 +6,7 @@ BOARD ?= native
 
 
 # Blacklisting msp430-based boards, as file syscalls are not supported
-BOARD_BLACKLIST :=  chronos \
-                    msb-430 \
-                    msb-430h \
-                    telosb \
-                    wsn430-v1_3b \
-                    wsn430-v1_4 \
-                    z1 \
-                    #
-
-BOARD_INSUFFICIENT_MEMORY := arduino-duemilanove arduino-leonardo arduino-nano \
-                             arduino-uno nucleo-f031k6
+FEATURES_BLACKLIST += arch_msp430
 
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
@@ -36,6 +26,7 @@ USEMODULE += ps
 
 # Use MTD (flash layer)
 USEMODULE += mtd
+# USEMODULE += mtd_sdcard
 
 # Use VFS
 USEMODULE += vfs
@@ -43,7 +34,7 @@ USEMODULE += vfs
 # Use a file system
 USEMODULE += littlefs
 # USEMODULE += spiffs
-# USEMODULE += fatfs
+# USEMODULE += fatfs_vfs
 USEMODULE += constfs
 # USEMODULE += devfs
 
@@ -53,6 +44,8 @@ ifneq (,$(filter littlefs, $(USEMODULE)))
 else ifneq (,$(filter spiffs, $(USEMODULE)))
     SPIFFS_NB_FD ?= 8
     CFLAGS += '-DSPIFFS_FS_FD_SPACE_SIZE=(32 * $(SPIFFS_NB_FD))'
+else ifneq (,$(filter fatfs_vfs, $(USEMODULE)))
+    CFLAGS += -DVFS_FILE_BUFFER_SIZE=72 -DVFS_DIR_BUFFER_SIZE=44
 endif
 
 include $(RIOTBASE)/Makefile.include

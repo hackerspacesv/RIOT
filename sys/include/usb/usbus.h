@@ -29,6 +29,7 @@
 #include "clist.h"
 #include "event.h"
 #include "kernel_types.h"
+#include "kernel_defines.h"
 #include "msg.h"
 #include "thread.h"
 
@@ -40,6 +41,11 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup usb_usbus_conf    USBUS compile time configurations
+ * @ingroup usb_conf
+ * @{
+ */
 /**
  * @brief USBUS thread stack size
  */
@@ -55,19 +61,16 @@ extern "C" {
 #endif
 
 /**
- * @brief USBUS thread name
- */
-#define USBUS_TNAME                 "usbus"
-
-/**
  * @brief USBUS auto attach setting
  *
- * When set, the USBUS thread will automatically enable the USB pull-up
+ * When set to 1, the USBUS thread will automatically enable the USB pull-up
  * resistor after initializing the thread. This will signal to the host
  * that the USB peripheral is ready for use.
  */
-#ifndef USBUS_AUTO_ATTACH
-#define USBUS_AUTO_ATTACH           (1)
+#ifndef CONFIG_USBUS_AUTO_ATTACH
+#if !IS_ACTIVE(KCONFIG_MODULE_USBUS)
+#define CONFIG_USBUS_AUTO_ATTACH            1
+#endif
 #endif
 
 /**
@@ -77,9 +80,25 @@ extern "C" {
  * large amount of data often over the control endpoint, a minimal size should
  * be sufficient
  */
-#ifndef USBUS_EP0_SIZE
-#define USBUS_EP0_SIZE              64
+#if IS_ACTIVE(CONFIG_USBUS_EP0_SIZE_8)
+#define CONFIG_USBUS_EP0_SIZE               8
+#elif IS_ACTIVE(CONFIG_USBUS_EP0_SIZE_16)
+#define CONFIG_USBUS_EP0_SIZE              16
+#elif IS_ACTIVE(CONFIG_USBUS_EP0_SIZE_32)
+#define CONFIG_USBUS_EP0_SIZE              32
+#elif IS_ACTIVE(CONFIG_USBUS_EP0_SIZE_64)
+#define CONFIG_USBUS_EP0_SIZE              64
 #endif
+
+#ifndef CONFIG_USBUS_EP0_SIZE
+#define CONFIG_USBUS_EP0_SIZE              64
+#endif
+/** @} */
+
+/**
+ * @brief USBUS thread name
+ */
+#define USBUS_TNAME                 "usbus"
 
 /**
  * @name USBUS thread flags
@@ -120,7 +139,7 @@ typedef enum {
  * @brief USB endpoint transfer status events
  */
 typedef enum {
-    USBUS_EVENT_TRANSFER_COMPLETE,  /**< Transfer succesfully completed */
+    USBUS_EVENT_TRANSFER_COMPLETE,  /**< Transfer successfully completed */
     USBUS_EVENT_TRANSFER_FAIL,      /**< Transfer nack replied by peripheral */
     USBUS_EVENT_TRANSFER_STALL,     /**< Transfer stall replied by peripheral */
 } usbus_event_transfer_t;
@@ -137,17 +156,18 @@ typedef enum {
 } usbus_state_t;
 
 /**
- * @brief USBUS setup request state machine
+ * @brief USBUS control request state machine
  */
 typedef enum {
-    USBUS_SETUPRQ_READY,        /**< Ready for new setup request */
-    USBUS_SETUPRQ_INDATA,       /**< Request received with expected DATA IN stage */
-    USBUS_SETUPRQ_OUTACK,       /**< Expecting a zero-length ack out request
-                                     from the host */
-    USBUS_SETUPRQ_OUTDATA,      /**< Data OUT expected */
-    USBUS_SETUPRQ_INACK,        /**< Expecting a zero-length ack in request
-                                     from the host */
-} usbus_setuprq_state_t;
+    USBUS_CONTROL_REQUEST_STATE_READY,    /**< Ready for new control request */
+    USBUS_CONTROL_REQUEST_STATE_INDATA,   /**< Request received with expected
+                                               DATA IN stage */
+    USBUS_CONTROL_REQUEST_STATE_OUTACK,   /**< Expecting a zero-length ack OUT
+                                               request from the host */
+    USBUS_CONTROL_REQUEST_STATE_OUTDATA,  /**< Data OUT expected */
+    USBUS_CONTROL_REQUEST_STATE_INACK,    /**< Expecting a zero-length ack IN
+                                               request from the host */
+} usbus_control_request_state_t;
 
 /**
  * @brief USBUS string type
@@ -169,60 +189,83 @@ typedef struct usbus usbus_t;
 typedef struct usbus_handler usbus_handler_t;
 
 /**
- * @brief Header length types for USB descriptor generators
+ * @brief descriptor length types for USB descriptor generators
  */
 typedef enum {
-    USBUS_HDR_LEN_FIXED,    /**< Header always generates a fixed length */
-    USBUS_HDR_LEN_FUNC,     /**< Header length is calculated by a function */
-} usbus_hdr_len_type_t;
+    USBUS_DESCR_LEN_FIXED,  /**< Descriptor always generates a fixed length */
+    USBUS_DESCR_LEN_FUNC,   /**< Descriptor length is calculated by a function */
+} usbus_descr_len_type_t;
 
 /**
- * @brief USBUS header generator function pointers
+ * @brief USBUS descriptor generator function pointers
  */
 typedef struct {
     /**
-     * @brief function pointer to retrieve the header content of this header
-     * generator
+     * @brief function pointer to format the descriptor content of this
+     * descriptor generator. The content of this descriptor is prefixes before
+     * the descriptor of the object it is part of.
      *
      * @param usbus The usbus context
-     * @param arg   Additional argument for the header generator
+     * @param arg   Additional argument for the descriptor generator
      *
-     * @return      Length of the generated header
+     * @return      Length of the generated descriptor
      */
-    size_t (*get_header)(usbus_t *usbus, void *arg);
+    size_t (*fmt_pre_descriptor)(usbus_t *usbus, void *arg);
+
+    /**
+     * @brief function pointer to format the descriptor content of this
+     * descriptor generator. The content of this descriptor is appended after
+     * the descriptor of the object it is part of.
+     *
+     * @param usbus The usbus context
+     * @param arg   Additional argument for the descriptor generator
+     *
+     * @return      Length of the generated descriptor
+     */
+    size_t (*fmt_post_descriptor)(usbus_t *usbus, void *arg);
     union {
         /**
-         * @brief USBUS generic header generator generated length
+         * @brief USBUS generic descriptor generator generated length
          *
-         * Must return the length of the header that will be generated by
-         * @ref get_header
+         * Must return the total length of the descriptors that will be
+         * generated by @ref fmt_pre_descriptor and @ref fmt_post_descriptor
+         * This function is used when @ref len_type is set to
+         * @ref USBUS_DESCR_LEN_FUNC.
          *
          * @param usbus The usbus context
-         * @param arg   Additional argument for the header generator
+         * @param arg   Additional argument for the descriptor generators
          *
-         * @return      Length of the generated header
+         * @return      Length of the generated descriptors
          */
-        size_t (*get_header_len)(usbus_t *usbus, void *arg);
-        size_t fixed_len;           /**< length of the header if it is a fixed length */
-    } len;                          /**< Fixed or generated length of the header */
-    usbus_hdr_len_type_t len_type;  /**< Either USBUS_HDR_LEN_FIXED or USBUS_HDR_LEN_FUNC */
-} usbus_hdr_gen_funcs_t;
+        size_t (*get_descriptor_len)(usbus_t *usbus, void *arg);
+        /**
+         * @brief Fixed total length of the generated descriptors
+         *
+         * Must return the total length of the descriptors that will be
+         * generated by the @ref fmt_pre_descriptor and @ref fmt_post_descriptor.
+         * This value is used when @ref len_type is set to
+         * @ref USBUS_DESCR_LEN_FIXED.
+         */
+        size_t fixed_len;
+    } len;                            /**< Fixed or generated length of the descriptor */
+    usbus_descr_len_type_t len_type;  /**< Either USBUS_DESCR_LEN_FIXED or USBUS_DESCR_LEN_FUNC */
+} usbus_descr_gen_funcs_t;
 
 /**
- * @brief USBUS header generator
+ * @brief USBUS descriptor generator
  *
  * The functions are called to allow custom modules to define their own
- * headers in addition to the USB descriptor. The top level (@ref usbus_t), the
+ * descriptors in addition to the USB descriptor. The top level (@ref usbus_t), the
  * interface (@ref usbus_interface_t), interface alternative settings
  * (@ref usbus_interface_alt_t) and endpoints (@ref usbus_endpoint_t) allow for
- * generating additional headers
+ * generating additional descriptors
  */
-typedef struct usbus_hdr_gen {
-    struct usbus_hdr_gen *next;         /**< ptr to the next header generator */
-    const usbus_hdr_gen_funcs_t *funcs; /**< Function pointers */
-    void *arg;                          /**< Extra context argument for the
-                                             headers functions */
-} usbus_hdr_gen_t;
+typedef struct usbus_descr_gen {
+    struct usbus_descr_gen *next;         /**< ptr to the next descriptor generator */
+    const usbus_descr_gen_funcs_t *funcs; /**< Function pointers */
+    void *arg;                            /**< Extra context argument for the
+                                               descriptor functions */
+} usbus_descr_gen_t;
 
 /**
  * @brief USBUS endpoint context
@@ -231,7 +274,8 @@ typedef struct usbus_endpoint {
     struct usbus_endpoint *next;    /**< Next endpoint in the
                                          @ref usbus_interface_t list of
                                          endpoints */
-    usbus_hdr_gen_t *hdr_gen;       /**< Optional additional header generator */
+    usbus_descr_gen_t *descr_gen;   /**< Linked list of optional additional
+                                         descriptor generators */
     usbdev_ep_t *ep;                /**< ptr to the matching usbdev endpoint */
     uint16_t maxpacketsize;         /**< Max packet size of this endpoint */
     uint8_t interval;               /**< Poll interval for interrupt endpoints */
@@ -246,8 +290,8 @@ typedef struct usbus_endpoint {
  */
 typedef struct usbus_interface_alt {
     struct usbus_interface_alt *next;   /**< Next alternative setting */
-    usbus_hdr_gen_t *hdr_gen;           /**< Optional additional header
-                                             generator */
+    usbus_descr_gen_t *descr_gen;       /**< Linked list of optional additional
+                                             descriptor generators */
     usbus_endpoint_t *ep;               /**< List of associated endpoints for
                                              this alternative setting */
 } usbus_interface_alt_t;
@@ -258,8 +302,8 @@ typedef struct usbus_interface_alt {
 typedef struct usbus_interface {
     struct usbus_interface *next;       /**< Next interface (set by USBUS during
                                              registration)                     */
-    usbus_hdr_gen_t *hdr_gen;           /**< Optional additional header
-                                             generators                        */
+    usbus_descr_gen_t *descr_gen;       /**< Linked list of optional additional
+                                             descriptor generators */
     usbus_endpoint_t *ep;               /**< Linked list of endpoints belonging
                                              to this interface                 */
     struct usbus_interface_alt *alts;   /**< List of alt settings              */
@@ -314,13 +358,13 @@ typedef struct usbus_handler_driver {
                              usbdev_ep_t *ep, usbus_event_transfer_t event);
 
     /**
-     * @brief setup request handler function
+     * @brief control request handler function
      *
-     * This function receives USB setup requests from the USBUS stack.
+     * This function receives USB control requests from the USBUS stack.
      *
      * @param usbus     USBUS context
      * @param handler   handler context
-     * @param state     setup request state
+     * @param state     control request state
      * @param setup     setup packet
      *
      * @return          Size of the returned data when the request is handled
@@ -328,8 +372,9 @@ typedef struct usbus_handler_driver {
      *                  host
      * @return          zero when the request is not handled by this handler
      */
-    int (*setup_handler)(usbus_t * usbus, struct usbus_handler *handler,
-                         usbus_setuprq_state_t state, usb_setup_t *request);
+    int (*control_handler)(usbus_t * usbus, struct usbus_handler *handler,
+                           usbus_control_request_state_t state,
+                           usb_setup_t *request);
 } usbus_handler_driver_t;
 
 /**
@@ -358,7 +403,8 @@ struct usbus {
     event_queue_t queue;                            /**< Event queue                           */
     usbdev_t *dev;                                  /**< usb phy device of the usb manager     */
     usbus_handler_t *control;                       /**< Ptr to the control endpoint handler   */
-    usbus_hdr_gen_t *hdr_gen;                       /**< Top level header generators           */
+    usbus_descr_gen_t *descr_gen;                   /**< Linked list of top level descriptor
+                                                         generators                            */
     usbus_string_t *strings;                        /**< List of descriptor strings            */
     usbus_interface_t *iface;                       /**< List of USB interfaces                */
     usbus_handler_t *handlers;                      /**< List of event callback handlers       */
@@ -404,6 +450,24 @@ uint16_t usbus_add_string_descriptor(usbus_t *usbus, usbus_string_t *desc,
 uint16_t usbus_add_interface(usbus_t *usbus, usbus_interface_t *iface);
 
 /**
+ * @brief Find an endpoint from an interface based on the endpoint properties
+ *
+ * This iterates over the endpoints in an interface and will return the first
+ * endpoint from the interface matching the @p type and @p dir. It will return
+ * NULL when no matching endpoint is found.
+ *
+ * @param[in] interface interface to look in
+ * @param[in] type      endpoint type to match
+ * @param[in] dir       endpoint direction to match
+ *
+ * @return              ptr to the first matching endpoint
+ * @return              NULL when no endpoint is found
+ */
+usbus_endpoint_t *usbus_interface_find_endpoint(usbus_interface_t *interface,
+                                                usb_ep_type_t type,
+                                                usb_ep_dir_t dir);
+
+/**
  * @brief Add an endpoint to the specified interface
  *
  * An @ref usbdev_ep_t is requested from the low level peripheral matching the
@@ -426,10 +490,10 @@ usbus_endpoint_t *usbus_add_endpoint(usbus_t *usbus, usbus_interface_t *iface,
  * @brief Add a generator for generating additional top level USB descriptor
  * content
  *
- * @param[in] usbus     USBUS context
- * @param[in] hdr_gen   Header generator to add
+ * @param[in] usbus         USBUS context
+ * @param[in] descr_gen     descriptor generator to add
  */
-void usbus_add_conf_descriptor(usbus_t *usbus, usbus_hdr_gen_t *hdr_gen);
+void usbus_add_conf_descriptor(usbus_t *usbus, usbus_descr_gen_t *descr_gen);
 
 /**
  * @brief Add an event handler to the USBUS context

@@ -8,7 +8,7 @@
 
 /**
  * @defgroup    drivers_at AT (Hayes) command set library
- * @ingroup     drivers
+ * @ingroup     drivers_misc
  * @brief       AT (Hayes) command set library
  *
  * This module provides functions to interact with devices using AT commands.
@@ -45,38 +45,56 @@
 extern "C" {
 #endif
 
+/**
+ * @defgroup drivers_at_config     AT driver compile configuration
+ * @ingroup config_drivers_misc
+ * @{
+ */
+/**
+ * @brief End of line character to send after the AT command.
+ */
 #ifndef AT_SEND_EOL
-/** End of line character to send after the AT command */
 #define AT_SEND_EOL "\r"
 #endif
 
+/**
+ * @brief Enable/disable the expected echo after an AT command is sent.
+ */
 #ifndef AT_SEND_ECHO
-/** Enable/disable the expected echo after an AT command is sent */
 #define AT_SEND_ECHO 1
 #endif
 
-/** Shortcut for getting send end of line length */
-#define AT_SEND_EOL_LEN  (sizeof(AT_SEND_EOL) - 1)
-
+/**
+ * @brief 1st end of line character received (S3 aka CR character for a modem).
+ */
 #ifndef AT_RECV_EOL_1
-/** 1st end of line character received (S3 aka CR character for a modem) */
 #define AT_RECV_EOL_1   "\r"
 #endif
 
+/**
+ * @brief 1st end of line character received (S4 aka LF character for a modem).
+ */
 #ifndef AT_RECV_EOL_2
-/** 1st end of line character received (S4 aka LF character for a modem) */
 #define AT_RECV_EOL_2   "\n"
 #endif
 
+/**
+ * @brief default OK reply of an AT device.
+ */
 #ifndef AT_RECV_OK
-/** default OK reply of an AT device */
 #define AT_RECV_OK "OK"
 #endif
 
+/**
+ * @brief default ERROR reply of an AT device.
+ */
 #ifndef AT_RECV_ERROR
-/** default ERROR reply of an AT device */
 #define AT_RECV_ERROR "ERROR"
 #endif
+/** @} */
+
+/** Shortcut for getting send end of line length */
+#define AT_SEND_EOL_LEN  (sizeof(AT_SEND_EOL) - 1)
 
 #if defined(MODULE_AT_URC) || DOXYGEN
 #ifndef AT_BUF_SIZE
@@ -183,8 +201,9 @@ ssize_t at_send_cmd_get_resp(at_dev_t *dev, const char *command, char *resp_buf,
  * This function sends the supplied @p command, then returns all response
  * lines until the device sends "OK".
  *
- * If a line starts with "ERROR" or "+CME ERROR:", or the buffer is full, the
- * function returns -1.
+ * If a line starts with "ERROR" or the buffer is full, the function returns -1.
+ * If a line starts with "+CME ERROR" or +CMS ERROR", the function returns -2.
+ * In this case resp_buf contains the error string.
  *
  * @param[in]   dev         device to operate on
  * @param[in]   command     command to send
@@ -194,7 +213,8 @@ ssize_t at_send_cmd_get_resp(at_dev_t *dev, const char *command, char *resp_buf,
  * @param[in]   timeout     timeout (in usec)
  *
  * @returns     length of response on success
- * @returns     <0 on error
+ * @returns     -1 on error
+ * @returns     -2 on CMS or CME error
  */
 ssize_t at_send_cmd_get_lines(at_dev_t *dev, const char *command, char *resp_buf,
                               size_t len, bool keep_eol, uint32_t timeout);

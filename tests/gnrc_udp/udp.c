@@ -82,7 +82,8 @@ static void *_eventloop(void *arg)
 static void send(char *addr_str, char *port_str, char *data_len_str, unsigned int num,
                  unsigned int delay)
 {
-    int iface;
+    gnrc_netif_t *netif = NULL;
+    char *iface;
     char *conversion_end;
     uint16_t port;
     ipv6_addr_t addr;
@@ -90,8 +91,11 @@ static void send(char *addr_str, char *port_str, char *data_len_str, unsigned in
 
     /* get interface, if available */
     iface = ipv6_addr_split_iface(addr_str);
-    if ((iface < 0) && (gnrc_netif_numof() == 1)) {
-        iface = gnrc_netif_iter(NULL)->pid;
+    if ((!iface) && (gnrc_netif_numof() == 1)) {
+        netif = gnrc_netif_iter(NULL);
+    }
+    else if (iface) {
+        netif = gnrc_netif_get_by_pid(atoi(iface));
     }
     /* parse destination address */
     if (ipv6_addr_from_str(&addr, addr_str) == NULL) {
@@ -135,11 +139,16 @@ static void send(char *addr_str, char *port_str, char *data_len_str, unsigned in
             return;
         }
         /* add netif header, if interface was given */
-        if (iface > 0) {
-            gnrc_pktsnip_t *netif = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
+        if (netif != NULL) {
+            gnrc_pktsnip_t *netif_hdr = gnrc_netif_hdr_build(NULL, 0, NULL, 0);
 
-            ((gnrc_netif_hdr_t *)netif->data)->if_pid = (kernel_pid_t)iface;
-            LL_PREPEND(ip, netif);
+            if(netif == NULL) {
+                puts("Error: unable to allocate NETIF header");
+                gnrc_pktbuf_release(ip);
+                return;
+            }
+            gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
+            LL_PREPEND(ip, netif_hdr);
         }
         /* send packet */
         if (!gnrc_netapi_dispatch_send(GNRC_NETTYPE_UDP, GNRC_NETREG_DEMUX_CTX_ALL, ip)) {

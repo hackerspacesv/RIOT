@@ -33,9 +33,14 @@ extern const void *_isr_vectors;
 
 CORTEXM_STATIC_INLINE void cortexm_init_isr_priorities(void)
 {
+#if CPU_CORTEXM_PRIORITY_GROUPING != 0
+    /* If defined, initialise priority subgrouping, see cpu_conf_common.h */
+    NVIC_SetPriorityGrouping(CPU_CORTEXM_PRIORITY_GROUPING);
+#endif
+
     /* initialize the interrupt priorities */
-    /* set pendSV interrupt to same priority as the rest */
-    NVIC_SetPriority(PendSV_IRQn, CPU_DEFAULT_IRQ_PRIO);
+    /* set pendSV interrupt to its own priority */
+    NVIC_SetPriority(PendSV_IRQn, CPU_CORTEXM_PENDSV_IRQ_PRIO);
     /* set SVC interrupt to same priority as the rest */
     NVIC_SetPriority(SVCall_IRQn, CPU_DEFAULT_IRQ_PRIO);
     /* initialize all vendor specific interrupts with the same value */
@@ -93,11 +98,11 @@ bool cpu_check_address(volatile const char *address)
     *address;
     /* Check BFARVALID flag */
     if ((SCB->CFSR & BFARVALID_MASK) != 0) {
-        /* Bus Fault occured reading the address */
+        /* Bus Fault occurred reading the address */
         is_valid = false;
     }
 
-    /* Reenable BusFault by clearing  BFHFNMIGN */
+    /* Re-enable BusFault by clearing  BFHFNMIGN */
     SCB->CCR &= ~SCB_CCR_BFHFNMIGN_Msk;
     __set_FAULTMASK(mask);
 
@@ -110,7 +115,7 @@ bool cpu_check_address(volatile const char *address)
 
     __asm__ volatile (
         "movs r5, #1            \n" /* R5 will be set to 0 by HardFault handler */
-                                    /* to indicate HardFault has occured */
+                                    /* to indicate HardFault has occurred */
         "ldr  r1, =0xDEADF00D   \n" /* set magic number     */
         "ldr  r2, =0xCAFEBABE   \n" /* 2nd magic to be sure */
         "ldrb r3, %1            \n" /* probe address        */

@@ -1,7 +1,9 @@
 PKG_NAME    = nimble
 PKG_URL     = https://github.com/apache/mynewt-nimble.git
-PKG_VERSION = 9d4bda2edcf0e7c2a03aa908321293a53361d258
+PKG_VERSION = 37245d0c3f239c35c0c734a337c7b6301fcfd70b
 PKG_LICENSE = Apache-2.0
+
+include $(RIOTBASE)/pkg/pkg.mk
 
 TDIR = $(RIOTPKG)/$(PKG_NAME)
 PDIR = $(PKG_BUILDDIR)
@@ -14,11 +16,15 @@ ifeq (llvm,$(TOOLCHAIN))
 # `nimble/controller/src/ble_ll_adv.c` isn't used in our compilation path, so
 # tell LLVM/clang not to be so pedantic with this.
   CFLAGS += -Wno-unused-function
+# Workaround, until https://github.com/apache/mynewt-nimble/pull/566 is merged
+# upstream and the NimBLE version in RIOT is updated.
+  CFLAGS += -Wno-sometimes-uninitialized
 else
   CFLAGS += -Wno-unused-but-set-variable
 endif
 
-SUBMODS := $(filter nimble_%,$(USEMODULE))
+IGNORE := nimble_autoconn_%
+SUBMODS := $(filter-out $(IGNORE),$(filter nimble_%,$(USEMODULE)))
 
 .PHONY: all
 
@@ -64,17 +70,21 @@ nimble_transport_ram:
 nimble_controller:
 	"$(MAKE)" -C $(PDIR)/nimble/controller/src/ -f $(TDIR)/controller.mk
 
-nimble_drivers_nrf52:
-	"$(MAKE)" -C $(PDIR)/nimble/drivers/nrf52/src/ -f $(TDIR)/drivers.nrf52.mk
+nimble_drivers_nrf5x:
+	"$(MAKE)" -C $(PDIR)/nimble/drivers/$(CPU_FAM)/src/ -f $(TDIR)/drivers.nrf5x.mk
 
 # additional, RIOT specific nimble modules
 nimble_addr:
 	"$(MAKE)" -C $(TDIR)/addr/
+
+nimble_autoconn:
+	"$(MAKE)" -C $(TDIR)/autoconn
+
+nimble_netif:
+	"$(MAKE)" -C $(TDIR)/netif/
 
 nimble_scanlist:
 	"$(MAKE)" -C $(TDIR)/scanlist
 
 nimble_scanner:
 	"$(MAKE)" -C $(TDIR)/scanner
-
-include $(RIOTBASE)/pkg/pkg.mk

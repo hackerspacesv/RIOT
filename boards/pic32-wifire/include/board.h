@@ -32,18 +32,11 @@
 extern "C" {
 #endif
 
-#include "vendor/p32mz2048efg100.h"
-
 /**
  * @brief   Set how many increments of the count register per uS
  *          needed by the timer code.
  */
 #define TICKS_PER_US (100)
-
-/**
- * @brief   We are using an External Interrupt Controller (all pic32 devices use this mode)
- */
-#define EIC_IRQ      (1)
 
 /**
  * @name    LED pin configuration
@@ -74,6 +67,17 @@ extern "C" {
 #define LED4_ON             (LATGSET = LED4_MASK)
 #define LED4_OFF            (LATGCLR = LED4_MASK)
 #define LED4_TOGGLE         (LATGINV = LED4_MASK)
+/** @} */
+
+/**
+ * @name    Button pin configuration
+ * @{
+ */
+#define BTN0_PIN            GPIO_PIN(PORT_A, 5)
+#define BTN0_MODE           GPIO_IN
+
+#define BTN1_PIN            GPIO_PIN(PORT_A, 4)
+#define BTN1_MODE           GPIO_IN
 /** @} */
 
 /**

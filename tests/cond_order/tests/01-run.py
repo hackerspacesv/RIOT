@@ -10,32 +10,36 @@
 import os
 import sys
 
-thread_prio = {
-        3:  6,
-        4:  4,
-        5:  0,
-        6:  2,
-        7:  1
-        }
-first_group_size = 3
+NUM_THREADS = 5
 
 
 def testfunc(child):
-    for k in thread_prio.keys():
-        child.expect(u"T%i \(prio %i\): waiting on condition variable now" % (k, thread_prio[k]))
+    # First collect the thread info how they are created
+    # A number of lines with:
+    #  T4 (prio 6): waiting on condition variable now
+    thread_prios = {}
+    for _ in range(NUM_THREADS):
+        child.expect(r"T(\d+) \(prio (\d+)\): waiting on condition variable now")
+        thread_id = int(child.match.group(1))
+        thread_prio = int(child.match.group(2))
+        thread_prios[thread_id] = thread_prio
+
+    child.expect_exact("First batch was signaled")
 
     count = 0
-    last = -1
-    child.expect(u"First batch was signaled")
-    for _ in range(len(thread_prio)):
-        child.expect(u"T\d+ \(prio (\d+)\): condition variable was signaled now")
-        assert(int(child.match.group(1)) > last)
-        last = int(child.match.group(1))
+    last_prio = -1
+    for _ in range(len(thread_prios)):
+        child.expect(r"T(\d+) \(prio (\d+)\): condition variable was signaled now")
+        thread_id = int(child.match.group(1))
+        thread_prio = int(child.match.group(2))
+        assert thread_prios[thread_id] == thread_prio
+        assert thread_prio > last_prio
+        last_prio = thread_prio
         count += 1
         if count == 3:
-            child.expect(u"First batch has woken up")
-            child.expect(u"Second batch was signaled")
-    child.expect(u"Second batch has woken up")
+            child.expect_exact("First batch has woken up")
+            child.expect_exact("Second batch was signaled")
+    child.expect_exact("Second batch has woken up")
 
 
 if __name__ == "__main__":

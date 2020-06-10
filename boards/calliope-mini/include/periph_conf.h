@@ -35,7 +35,6 @@ extern "C" {
  */
 #define UART_NUMOF          (1U)
 /* UART pin configuration */
-#define UART_HWFLOWCTRL     0
 #define UART_PIN_RX         25
 #define UART_PIN_TX         24
 /** @} */
@@ -54,7 +53,7 @@ static const i2c_conf_t i2c_config[] = {
     }
 };
 
-#define I2C_NUMOF           (sizeof(i2c_config) / sizeof(i2c_config[0]))
+#define I2C_NUMOF           ARRAY_SIZE(i2c_config)
 /** @} */
 
 /**

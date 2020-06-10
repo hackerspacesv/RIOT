@@ -13,6 +13,9 @@ endif
 ifneq (,$(filter posix_semaphore,$(USEMODULE)))
   DIRS += posix/semaphore
 endif
+ifneq (,$(filter dhcpv6,$(USEMODULE)))
+  DIRS += net/application_layer/dhcpv6
+endif
 ifneq (,$(filter posix_sockets,$(USEMODULE)))
   DIRS += posix/sockets
 endif
@@ -24,6 +27,12 @@ ifneq (,$(filter pthread,$(USEMODULE)))
 endif
 ifneq (,$(filter shell_commands,$(USEMODULE)))
   DIRS += shell/commands
+endif
+ifneq (,$(filter test_utils_interactive_sync,$(USEMODULE)))
+  DIRS += test_utils/interactive_sync
+endif
+ifneq (,$(filter dummy_thread,$(USEMODULE)))
+  DIRS += test_utils/dummy_thread
 endif
 ifneq (,$(filter net_help,$(USEMODULE)))
   DIRS += net/crosslayer/net_help
@@ -61,9 +70,6 @@ endif
 ifneq (,$(filter cipher_modes,$(USEMODULE)))
   DIRS += crypto/modes
 endif
-ifneq (,$(filter nhdp,$(USEMODULE)))
-  DIRS += net/routing/nhdp
-endif
 ifneq (,$(filter fib,$(USEMODULE)))
   DIRS += net/network_layer/fib
 endif
@@ -73,8 +79,8 @@ endif
 ifneq (,$(filter log_%,$(USEMODULE)))
   DIRS += log
 endif
-ifneq (,$(filter xtimer,$(USEMODULE)))
-  DIRS += xtimer
+ifneq (,$(filter ztimer_xtimer_compat,$(USEMODULE)))
+  FILTER += xtimer
 endif
 ifneq (,$(filter cpp11-compat,$(USEMODULE)))
   DIRS += cpp11-compat
@@ -108,6 +114,9 @@ ifneq (,$(filter asymcute,$(USEMODULE)))
 endif
 ifneq (,$(filter emcute,$(USEMODULE)))
   DIRS += net/application_layer/emcute
+endif
+ifneq (,$(filter sock_async_event,$(USEMODULE)))
+  DIRS += net/sock/async/event
 endif
 ifneq (,$(filter sock_util,$(USEMODULE)))
   DIRS += net/sock
@@ -148,7 +157,19 @@ endif
 ifneq (,$(filter usbus usbus_%,$(USEMODULE)))
     DIRS += usb/usbus
 endif
+ifneq (,$(filter credman,$(USEMODULE)))
+  DIRS += net/credman
+endif
+ifneq (,$(filter suit%,$(USEMODULE)))
+  DIRS += suit
+endif
+ifneq (,$(filter netif,$(USEMODULE)))
+    DIRS += net/netif
+endif
+ifneq (,$(filter ztimer_core,$(USEMODULE)))
+    DIRS += ztimer
+endif
 
-DIRS += $(dir $(wildcard $(addsuffix /Makefile, $(USEMODULE))))
+DIRS += $(dir $(wildcard $(addsuffix /Makefile, $(filter-out $(FILTER), $(USEMODULE)))))
 
 include $(RIOTBASE)/Makefile.base

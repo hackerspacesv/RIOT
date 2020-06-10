@@ -22,6 +22,7 @@
 #define PERIPH_CPU_COMMON_H
 
 #include "cpu.h"
+#include "exti_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,17 +96,6 @@ enum {
  */
 #define GPIO_MODE(pr, ie, pe)   (pr | (ie << 1) | (pe << 2))
 
-/**
- * @name    Power mode configuration
- * @{
- */
-#ifdef CPU_SAML1X
-#define PM_NUM_MODES        (2)
-#else
-#define PM_NUM_MODES        (3)
-#endif
-/** @} */
-
 #ifndef DOXYGEN
 /**
  * @brief   Override GPIO modes
@@ -178,6 +168,7 @@ typedef enum {
     UART_FLAG_WAKEUP          = 0x2,    /**< wake from sleep on receive */
 } uart_flag_t;
 
+#ifndef DOXYGEN
 /**
  * @brief   Available SERCOM UART data size selections
  *
@@ -193,6 +184,15 @@ typedef enum {
     UART_DATA_BITS_8 = 0x0,   /**< 8 data bits */
 } uart_data_bits_t;
 /** @} */
+#endif /* ndef DOXYGEN */
+
+
+/**
+ * @brief   Size of the UART TX buffer for non-blocking mode.
+ */
+#ifndef SAM0_UART_TXBUF_SIZE
+#define SAM0_UART_TXBUF_SIZE    (64)
+#endif
 
 /**
  * @brief   UART device configuration
@@ -201,11 +201,15 @@ typedef struct {
     SercomUsart *dev;       /**< pointer to the used UART device */
     gpio_t rx_pin;          /**< pin used for RX */
     gpio_t tx_pin;          /**< pin used for TX */
+#ifdef MODULE_PERIPH_UART_HW_FC
+    gpio_t rts_pin;          /**< pin used for RTS */
+    gpio_t cts_pin;          /**< pin used for CTS */
+#endif
     gpio_mux_t mux;         /**< alternative function for pins */
     uart_rxpad_t rx_pad;    /**< pad selection for RX line */
     uart_txpad_t tx_pad;    /**< pad selection for TX line */
     uart_flag_t flags;      /**< set optional SERCOM flags */
-    uint32_t gclk_src;      /**< GCLK source which supplys SERCOM */
+    uint8_t gclk_src;       /**< GCLK source which supplys SERCOM */
 } uart_conf_t;
 
 /**
@@ -228,6 +232,7 @@ typedef enum {
     SPI_PAD_MOSI_0_SCK_3 = 0x3, /**< use pad 0 for MOSI, pad 3 for SCK */
 } spi_mosipad_t;
 
+#ifndef DOXYGEN
 /**
  * @brief   Override SPI modes
  * @{
@@ -254,6 +259,7 @@ typedef enum {
     SPI_CLK_10MHZ  = 10000000U  /**< drive the SPI bus with 10MHz */
 } spi_clk_t;
 /** @} */
+#endif /* ndef DOXYGEN */
 
 /**
  * @brief   SPI device configuration
@@ -268,6 +274,7 @@ typedef struct {
     gpio_mux_t clk_mux;     /**< alternate function for CLK pin (mux) */
     spi_misopad_t miso_pad; /**< pad to use for MISO line */
     spi_mosipad_t mosi_pad; /**< pad to use for MOSI and CLK line */
+    uint8_t gclk_src;       /**< GCLK source which supplys SERCOM */
 } spi_conf_t;
 /** @} */
 
@@ -279,6 +286,7 @@ typedef enum {
     I2C_FLAG_RUN_STANDBY     = 0x1,    /**< run SERCOM in standby mode */
 } i2c_flag_t;
 
+#ifndef DOXYGEN
 /**
  * @name    Override I2C clock speed values
  * @{
@@ -292,6 +300,16 @@ typedef enum {
     I2C_SPEED_HIGH      = 3400000U,    /**< high speed mode:   ~3.4Mbit/s */
 } i2c_speed_t;
 /** @} */
+
+/**
+ * @name    I2C pin getter functions
+ * @{
+ */
+#define i2c_pin_sda(dev) i2c_config[dev].sda_pin
+#define i2c_pin_scl(dev) i2c_config[dev].scl_pin
+/** @} */
+
+#endif /* ndef DOXYGEN */
 
 /**
  * @brief   I2C device configuration
@@ -320,10 +338,15 @@ typedef struct {
     uint32_t pm_mask;       /**< PM_APBCMASK bits to enable Timer */
     uint16_t gclk_ctrl;     /**< GCLK_CLKCTRL_ID for the Timer */
 #endif
-    uint16_t gclk_src;      /**< GCLK source which supplys Timer */
+    uint8_t gclk_src;       /**< GCLK source which supplys Timer */
     uint16_t prescaler;     /**< prescaler used by the Timer */
     uint16_t flags;         /**< flags for CTRA, e.g. TC_CTRLA_MODE_COUNT32 */
 } tc32_conf_t;
+
+/**
+ * @brief   Number of available timer channels
+ */
+#define TIMER_CHANNELS      (2)
 
 /**
  * @brief   Set up alternate function (PMUX setting) for a PORT pin
@@ -334,48 +357,165 @@ typedef struct {
 void gpio_init_mux(gpio_t pin, gpio_mux_t mux);
 
 /**
+ * @brief   Called before the power management enters a power mode
+ *
+ * @param[in] deep
+ */
+void gpio_pm_cb_enter(int deep);
+
+/**
+ * @brief   Called after the power management left a power mode
+ *
+ * @param[in] deep
+ */
+void gpio_pm_cb_leave(int deep);
+
+/**
+ * @brief   Called before the power management enters a power mode
+ *
+ * @param[in] deep
+ */
+void cpu_pm_cb_enter(int deep);
+
+/**
+ * @brief   Called after the power management left a power mode
+ *
+ * @param[in] deep
+ */
+void cpu_pm_cb_leave(int deep);
+
+/**
+ * @brief   Wrapper for cortexm_sleep calling power management callbacks
+ *
+ * @param[in] deep
+ */
+static inline void sam0_cortexm_sleep(int deep)
+{
+#ifdef MODULE_PERIPH_GPIO
+    gpio_pm_cb_enter(deep);
+#endif
+
+    cpu_pm_cb_enter(deep);
+
+    cortexm_sleep(deep);
+
+    cpu_pm_cb_leave(deep);
+
+#ifdef MODULE_PERIPH_GPIO
+    gpio_pm_cb_leave(deep);
+#endif
+}
+
+/**
+ * @brief   Disable alternate function (PMUX setting) for a PORT pin
+ *
+ * @param[in] pin   Pin to reset the multiplexing for
+ */
+void gpio_disable_mux(gpio_t pin);
+
+/**
+ * @brief   Available voltage regulators on the supply controller.
+ */
+typedef enum {
+    SAM0_VREG_LDO,  /*< LDO, always available but not very power efficient */
+    SAM0_VREG_BUCK  /*< Buck converter, efficient but may clash with internal
+                        fast clock generators (see errata sheets) */
+} sam0_supc_t;
+
+/**
+ * @brief       Switch the internal voltage regulator used for generating the
+ *              internal MCU voltages.
+ *              Available options are:
+ *
+ *               - LDO: not very efficient, but will always work
+ *               - BUCK converter: Most efficient, but incompatible with the
+ *                 use of DFLL or DPLL.
+ *                 Please refer to the errata sheet, further restrictions may
+ *                 apply depending on the MCU.
+ *
+ * @param[in]   src
+ */
+static inline void sam0_set_voltage_regulator(sam0_supc_t src)
+{
+#ifdef REG_SUPC_VREG
+    SUPC->VREG.bit.SEL = src;
+    while (!SUPC->STATUS.bit.VREGRDY) {}
+#else
+    (void) src;
+    assert(0);
+#endif
+}
+
+/**
+ * @brief   Returns the frequency of a GCLK provider.
+ *
+ * @param[in] id    The ID of the GCLK
+ *
+ * @return          The frequency of the GCLK with the given ID.
+ */
+uint32_t sam0_gclk_freq(uint8_t id);
+
+/**
+ * @brief   Enables an on-demand GCLK that has been configured in cpu.c
+ *
+ * @param[in] id    The ID of the GCLK
+ */
+void sam0_gclk_enable(uint8_t id);
+
+/**
  * @brief   Return the numeric id of a SERCOM device derived from its address
  *
  * @param[in] sercom    SERCOM device
  *
  * @return              numeric id of the given SERCOM device
  */
-static inline int sercom_id(const void *sercom)
+static inline uint8_t sercom_id(const void *sercom)
 {
 #ifdef SERCOM0
-    if (sercom == SERCOM0)
+    if (sercom == SERCOM0) {
         return 0;
+    }
 #endif
 #ifdef SERCOM1
-    if (sercom == SERCOM1)
+    if (sercom == SERCOM1) {
         return 1;
+    }
 #endif
 #ifdef SERCOM2
-    if (sercom == SERCOM2)
+    if (sercom == SERCOM2) {
         return 2;
+    }
 #endif
 #ifdef SERCOM3
-    if (sercom == SERCOM3)
+    if (sercom == SERCOM3) {
         return 3;
+    }
 #endif
 #ifdef SERCOM4
-    if (sercom == SERCOM4)
+    if (sercom == SERCOM4) {
         return 4;
+    }
 #endif
 #ifdef SERCOM5
-    if (sercom == SERCOM5)
+    if (sercom == SERCOM5) {
         return 5;
+    }
 #endif
 #ifdef SERCOM6
-    if (sercom == SERCOM6)
+    if (sercom == SERCOM6) {
         return 6;
+    }
 #endif
 #ifdef SERCOM7
-    if (sercom == SERCOM7)
+    if (sercom == SERCOM7) {
         return 7;
+    }
 #endif
 
-    return -1;
+    /* should not be reached, so fail with assert */
+    assert(false);
+
+    return SERCOM_INST_NUM;
 }
 
 /**
@@ -455,24 +595,37 @@ static inline uint8_t _sercom_gclk_id_core(uint8_t sercom_id) {
  * @param[in] sercom    SERCOM device
  * @param[in] gclk      Generator clock
  */
-static inline void sercom_set_gen(void *sercom, uint32_t gclk)
+static inline void sercom_set_gen(void *sercom, uint8_t gclk)
 {
     const uint8_t id = sercom_id(sercom);
+    sam0_gclk_enable(gclk);
 #if defined(CPU_FAM_SAMD21)
-    GCLK->CLKCTRL.reg = (GCLK_CLKCTRL_CLKEN | gclk |
+    GCLK->CLKCTRL.reg = (GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN(gclk) |
                          (SERCOM0_GCLK_ID_CORE + id));
     while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY) {}
 #elif defined(CPU_FAM_SAMD5X)
-    GCLK->PCHCTRL[_sercom_gclk_id_core(id)].reg = (GCLK_PCHCTRL_CHEN | gclk);
+    GCLK->PCHCTRL[_sercom_gclk_id_core(id)].reg = (GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(gclk));
 #else
     if (id < 5) {
-        GCLK->PCHCTRL[SERCOM0_GCLK_ID_CORE + id].reg = (GCLK_PCHCTRL_CHEN | gclk);
+        GCLK->PCHCTRL[SERCOM0_GCLK_ID_CORE + id].reg = (GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(gclk));
     }
 #if defined(CPU_FAM_SAML21)
     else {
-        GCLK->PCHCTRL[SERCOM5_GCLK_ID_CORE].reg = (GCLK_PCHCTRL_CHEN | gclk);
+        GCLK->PCHCTRL[SERCOM5_GCLK_ID_CORE].reg = (GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(gclk));
     }
 #endif /* CPU_FAM_SAML21 */
+#endif
+}
+
+/**
+ * @brief   Returns true if the CPU woke deep sleep (backup/standby)
+ */
+static inline bool cpu_woke_from_backup(void)
+{
+#ifdef RSTC_RCAUSE_BACKUP
+    return RSTC->RCAUSE.bit.BACKUP;
+#else
+    return false;
 #endif
 }
 
@@ -493,8 +646,29 @@ typedef struct {
     gpio_t dp;              /**< D+ line gpio                           */
     gpio_mux_t d_mux;       /**< alternate function (mux) for data pins */
     UsbDevice *device;      /**< ptr to the device registers            */
+    uint8_t gclk_src;       /**< GCLK source which supplys 48 MHz       */
 } sam0_common_usb_config_t;
 #endif /* USB_INST_NUM */
+
+/**
+ * @name    WDT upper and lower bound times in ms
+ * @{
+ */
+/* Limits are in clock cycles according to data sheet.
+   As the WDT is clocked by a 1024 Hz clock, 1 cycle ≈ 1 ms */
+#define NWDT_TIME_LOWER_LIMIT          (8U)
+#define NWDT_TIME_UPPER_LIMIT          (16384U)
+/** @} */
+
+
+/**
+ * @brief Watchdog can be stopped.
+ */
+#define WDT_HAS_STOP                   (1)
+/**
+ * @brief Watchdog has to be initialized.
+ */
+#define WDT_HAS_INIT                   (1)
 
 #ifdef __cplusplus
 }

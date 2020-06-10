@@ -20,6 +20,29 @@
 #include "cpu.h"
 #include "periph_conf.h"
 #include "periph/init.h"
+#include "stdio_base.h"
+
+#if CLOCK_CORECLOCK == 0
+#error Please select CLOCK_CORECLOCK
+#endif
+
+/* use DFLL for low frequency operation */
+#if CLOCK_CORECLOCK > SAM0_DFLL_FREQ_HZ
+#define USE_DPLL 1
+#else
+#define USE_DPLL 0
+#if (SAM0_DFLL_FREQ_HZ % CLOCK_CORECLOCK)
+#error For frequencies < 48 MHz, CLOCK_CORECLOCK must be a divider of 48 MHz
+#endif
+#endif
+
+/* If the CPU clock is lower than the minimal DPLL Freq
+   set fDPLL = 2 * CLOCK_CORECLOCK */
+#if USE_DPLL && (CLOCK_CORECLOCK < SAM0_DPLL_FREQ_MIN_HZ)
+#define DPLL_DIV 2
+#else
+#define DPLL_DIV 1
+#endif
 
 static void xosc32k_init(void)
 {
@@ -41,12 +64,18 @@ static void dfll_init(void)
 #endif
     ;
 
-    OSCCTRL->DFLLCTRLB.reg = reg;
-    OSCCTRL->DFLLCTRLA.reg = OSCCTRL_DFLLCTRLA_ENABLE;
+    /* workaround for Errata 2.8.3 DFLLVAL.FINE Value When DFLL48M Re-enabled */
+    OSCCTRL->DFLLMUL.reg   = 0;   /* Write new DFLLMULL configuration */
+    OSCCTRL->DFLLCTRLB.reg = 0;   /* Select Open loop configuration */
+    OSCCTRL->DFLLCTRLA.bit.ENABLE = 1; /* Enable DFLL */
+    OSCCTRL->DFLLVAL.reg   = OSCCTRL->DFLLVAL.reg; /* Reload DFLLVAL register */
+    OSCCTRL->DFLLCTRLB.reg = reg; /* Write final DFLL configuration */
 
+    OSCCTRL->DFLLCTRLA.reg = OSCCTRL_DFLLCTRLA_ENABLE;
     while (!OSCCTRL->STATUS.bit.DFLLRDY) {}
 }
 
+#if USE_DPLL
 static void fdpll0_init(uint32_t f_cpu)
 {
     /* We source the DPLL from 32kHz GCLK1 */
@@ -74,10 +103,66 @@ static void fdpll0_init(uint32_t f_cpu)
     while (!(OSCCTRL->Dpll[0].DPLLSTATUS.bit.CLKRDY &&
              OSCCTRL->Dpll[0].DPLLSTATUS.bit.LOCK)) {}
 }
+#endif
 
 static void gclk_connect(uint8_t id, uint8_t src, uint32_t flags) {
     GCLK->GENCTRL[id].reg = GCLK_GENCTRL_SRC(src) | GCLK_GENCTRL_GENEN | flags | GCLK_GENCTRL_IDC;
     while (GCLK->SYNCBUSY.reg & GCLK_SYNCBUSY_GENCTRL(id)) {}
+}
+
+void sam0_gclk_enable(uint8_t id)
+{
+    /* clocks 0 & 1 are always running */
+
+    switch (id) {
+    case SAM0_GCLK_8MHZ:
+        /* 8 MHz clock used by xtimer */
+#if USE_DPLL
+        gclk_connect(SAM0_GCLK_8MHZ,
+                     GCLK_SOURCE_DPLL0,
+                     GCLK_GENCTRL_DIV(DPLL_DIV * CLOCK_CORECLOCK / 8000000));
+#else
+        gclk_connect(SAM0_GCLK_8MHZ,
+                     GCLK_SOURCE_DFLL,
+                     GCLK_GENCTRL_DIV(SAM0_DFLL_FREQ_HZ / 8000000));
+#endif
+        break;
+    case SAM0_GCLK_48MHZ:
+        gclk_connect(SAM0_GCLK_48MHZ, GCLK_SOURCE_DFLL, 0);
+        break;
+    }
+}
+
+uint32_t sam0_gclk_freq(uint8_t id)
+{
+    switch (id) {
+    case SAM0_GCLK_MAIN:
+        return CLOCK_CORECLOCK;
+    case SAM0_GCLK_32KHZ:
+        return 32768;
+    case SAM0_GCLK_8MHZ:
+        return 8000000;
+    case SAM0_GCLK_48MHZ:
+        return SAM0_DFLL_FREQ_HZ;
+    default:
+        return 0;
+    }
+}
+
+void cpu_pm_cb_enter(int deep)
+{
+    (void) deep;
+    /* will be called before entering sleep */
+}
+
+void cpu_pm_cb_leave(int deep)
+{
+    /* will be called after wake-up */
+
+    if (deep) {
+        /* DFLL needs to be re-initialized to work around errata 2.8.3 */
+        dfll_init();
+    }
 }
 
 /**
@@ -85,6 +170,14 @@ static void gclk_connect(uint8_t id, uint8_t src, uint32_t flags) {
  */
 void cpu_init(void)
 {
+    /* Disable the RTC module to prevent synchronization issues during CPU init
+       if the RTC was running from a previous boot (e.g wakeup from backup) */
+    if (RTC->MODE2.CTRLA.bit.ENABLE) {
+        while (RTC->MODE2.SYNCBUSY.reg) {}
+        RTC->MODE2.CTRLA.bit.ENABLE = 0;
+        while (RTC->MODE2.SYNCBUSY.reg) {}
+    }
+
     /* initialize the Cortex-M core */
     cortexm_init();
 
@@ -119,24 +212,28 @@ void cpu_init(void)
     CMCC->CTRL.bit.CEN = 1;
 
     xosc32k_init();
-    gclk_connect(1, GCLK_SOURCE_XOSC32K, 0);
+    gclk_connect(SAM0_GCLK_32KHZ, GCLK_SOURCE_XOSC32K, 0);
 
     /* make sure main clock is not sourced from DPLL */
     dfll_init();
-    gclk_connect(0, GCLK_SOURCE_DFLL, 0);
+    gclk_connect(SAM0_GCLK_MAIN, GCLK_SOURCE_DFLL, 0);
 
-    fdpll0_init(CLOCK_CORECLOCK);
+#if USE_DPLL
+    fdpll0_init(CLOCK_CORECLOCK * DPLL_DIV);
 
     /* source main clock from DPLL */
-    gclk_connect(0, GCLK_SOURCE_DPLL0, 0);
-
-    /* clock used by xtimer */
-    gclk_connect(5, GCLK_SOURCE_DPLL0, GCLK_GENCTRL_DIV(CLOCK_CORECLOCK / 8000000));
-
-#ifdef MODULE_PERIPH_USBDEV
-    gclk_connect(6, GCLK_SOURCE_DFLL, 0);
+    gclk_connect(SAM0_GCLK_MAIN, GCLK_SOURCE_DPLL0, GCLK_GENCTRL_DIV(DPLL_DIV));
+#else
+    gclk_connect(SAM0_GCLK_MAIN, GCLK_SOURCE_DFLL, GCLK_GENCTRL_DIV(SAM0_DFLL_FREQ_HZ / CLOCK_CORECLOCK));
 #endif
+
+    /* initialize stdio prior to periph_init() to allow use of DEBUG() there */
+    stdio_init();
 
     /* trigger static peripheral initialization */
     periph_init();
+
+    /* set ONDEMAND bit after all clocks have been configured */
+    /* This is to avoid setting the source for the main clock to ONDEMAND before using it. */
+    OSCCTRL->Dpll[0].DPLLCTRLA.reg |= OSCCTRL_DPLLCTRLA_ONDEMAND;
 }

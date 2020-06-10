@@ -1,4 +1,3 @@
-FEATURES_PROVIDED += puf_sram
-include $(RIOTBOARD)/common/arduino-atmega/Makefile.features
+CPU = atmega2560
 
-include $(RIOTCPU)/atmega2560/Makefile.features
+include $(RIOTBOARD)/common/arduino-atmega/Makefile.features

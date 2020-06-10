@@ -26,10 +26,11 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 #include "lua_run.h"
 #include "lua_builtin.h"
+
+#include "test_utils/expect.h"
 
 static const uint8_t pure_module_1[] = "\n\
 return {a='Quando uma lua'}\n\
@@ -64,9 +65,9 @@ const struct lua_riot_builtin_lua *const lua_riot_builtin_lua_table = _lua_riot_
 const struct lua_riot_builtin_c *const lua_riot_builtin_c_table = _lua_riot_builtin_c_table;
 
 const size_t lua_riot_builtin_lua_table_len =
-    sizeof(_lua_riot_builtin_lua_table) / sizeof(*_lua_riot_builtin_lua_table);
+    ARRAY_SIZE(_lua_riot_builtin_lua_table);
 const size_t lua_riot_builtin_c_table_len =
-    sizeof(_lua_riot_builtin_c_table) / sizeof(*_lua_riot_builtin_c_table);
+    ARRAY_SIZE(_lua_riot_builtin_c_table);
 
 #define LUA_MEM_SIZE (11000)
 static char lua_mem[LUA_MEM_SIZE] __attribute__ ((aligned(__BIGGEST_ALIGNMENT__)));
@@ -81,7 +82,7 @@ int main(void)
     status = lua_riot_do_module("test", lua_mem, LUA_MEM_SIZE,
                                 LUAR_LOAD_BASE, NULL);
 
-    assert(status == LUAR_EXIT);
+    expect(status == LUAR_EXIT);
 
     while (fgets(linebuf, LINEBUF_SZ, stdin) != NULL) {
         int status;
@@ -98,7 +99,7 @@ int main(void)
         status = lua_riot_do_buffer((unsigned char *)linebuf, linelen,
                                     lua_mem, LUA_MEM_SIZE,
                                     LUAR_LOAD_BASE | LUAR_LOAD_PACKAGE, NULL);
-        assert(status == LUAR_EXIT);
+        expect(status == LUAR_EXIT);
     }
 
     return 0;

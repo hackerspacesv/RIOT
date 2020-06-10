@@ -50,10 +50,15 @@
 # reset:        triggers a hardware reset of the target board
 #
 #
+# term-rtt:     opens a serial terminal using jlink RTT(reak time transfer)
+#
+#
 # @author       Hauke Peteresen <hauke.petersen@fu-berlin.de>
 
 # Set IMAGE_OFFSET to zero by default.
 : ${IMAGE_OFFSET:=0}
+# Allow overwriting the reset commands.
+: ${JLINK_RESET_FILE:=${RIOTTOOLS}/jlink/reset.seg}
 
 # default GDB port
 _GDB_PORT=3333
@@ -66,7 +71,7 @@ _JLINK_IF=SWD
 _JLINK_SPEED=2000
 # default terminal frontend
 _JLINK_TERMPROG=${RIOTTOOLS}/pyterm/pyterm
-_JLINK_TERMFLAGS="-ts 19021"
+_JLINK_TERMFLAGS="-ts 19021 ${PYTERMFLAGS}"
 
 #
 # a couple of tests for certain configuration options
@@ -167,7 +172,7 @@ do_flash() {
     if [ ! -z "${JLINK_POST_FLASH}" ]; then
         printf "${JLINK_POST_FLASH}\n" >> ${BINDIR}/burn.seg
     fi
-    cat ${RIOTTOOLS}/jlink/reset.seg >> ${BINDIR}/burn.seg
+    cat ${JLINK_RESET_FILE} >> ${BINDIR}/burn.seg
     # flash device
     sh -c "${JLINK} ${JLINK_SERIAL} \
                     -ExitOnError 1 \
@@ -224,7 +229,7 @@ do_reset() {
                     -speed '${JLINK_SPEED}' \
                     -if '${JLINK_IF}' \
                     -jtagconf -1,-1 \
-                    -commandfile '${RIOTTOOLS}/jlink/reset.seg'"
+                    -commandfile '${JLINK_RESET_FILE}'"
 }
 
 do_term() {
@@ -284,12 +289,12 @@ case "${ACTION}" in
     echo "### Resetting Target ###"
     do_reset "$@"
     ;;
-  term_rtt)
+  term-rtt)
     echo "### Starting RTT terminal ###"
     do_term
     ;;
   *)
-    echo "Usage: $0 {flash|debug|debug-server|reset}"
+    echo "Usage: $0 {flash|debug|debug-server|reset|term-rtt}"
     echo "          flash <binfile>"
     echo "          debug <elffile>"
     ;;

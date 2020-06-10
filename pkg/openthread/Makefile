@@ -1,7 +1,10 @@
 PKG_NAME=openthread
 PKG_URL=https://github.com/openthread/openthread.git
 PKG_VERSION=thread-reference-20180926
+PKG_LICENSE=BSD-3-Clause
 PKG_BUILDDIR ?= $(PKGDIRBASE)/$(PKG_NAME)
+
+include $(RIOTBASE)/pkg/pkg.mk
 
 ifneq (,$(filter openthread-ftd,$(USEMODULE)))
   TD = ftd
@@ -22,10 +25,9 @@ OPENTHREAD_ARGS += $(CLI_ARG) $(JOINER_ARG) --enable-application-coap
 CONFIG_FILE      = OPENTHREAD_PROJECT_CORE_CONFIG_FILE='\"platform_config.h\"'
 $(info $$OPENTHREAD_ARGS is [${OPENTHREAD_ARGS}])
 
-.PHONY: all
-
 OPENTHREAD_COMMON_FLAGS = -fdata-sections -ffunction-sections -Os
 OPENTHREAD_COMMON_FLAGS += -Wno-implicit-fallthrough -Wno-unused-parameter
+OPENTHREAD_CXXFLAGS += -Wno-class-memaccess
 
 all:
 	cd $(PKG_BUILDDIR) && PREFIX="/" ./bootstrap
@@ -34,7 +36,8 @@ all:
 		STRIP="$(STRIP)" \
 		CPPFLAGS="$(OPENTHREAD_COMMON_FLAGS) $(CFLAGS_CPU) -D$(CONFIG_FILE)" \
 		CFLAGS="$(OPENTHREAD_COMMON_FLAGS) $(CFLAGS_CPU) " \
-		CXXFLAGS="$(OPENTHREAD_COMMON_FLAGS) $(CFLAGS_CPU) -fno-exceptions -fno-rtti " \
+		CXXFLAGS="$(OPENTHREAD_COMMON_FLAGS) $(OPENTHREAD_CXXFLAGS) \
+		          $(CFLAGS_CPU) -fno-exceptions -fno-rtti " \
 		LDFLAGS="$(OPENTHREAD_COMMON_FLAGS) $(CFLAGS_CPU) -nostartfiles -specs=nano.specs \
 		-specs=nosys.specs -Wl,--gc-sections -Wl,-Map=map.map " \
 		./configure --disable-docs --host=$(TARGET_ARCH) --target=$(TARGET_ARCH) \
@@ -47,5 +50,3 @@ all:
 ifneq (,$(filter openthread-cli,$(USEMODULE)))
 	cp $(PKG_BUILDDIR)/output/lib/libopenthread-cli-$(TD).a ${BINDIR}/openthread-cli.a
 endif
-
-include $(RIOTBASE)/pkg/pkg.mk

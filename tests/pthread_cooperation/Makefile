@@ -1,17 +1,17 @@
 include ../Makefile.tests_common
 
-BOARD_BLACKLIST := arduino-duemilanove arduino-leonardo arduino-mega2560 \
-                   arduino-nano arduino-uno hifive1 i-nucleo-lrwan1 \
-                   jiminy-mega256rfr2 mega-xplained waspmote-pro
+# nucleo-f303k8 doesn't have enough RAM to run the test so we reduce the stack
+# size for every thread
+ifneq (,$(filter nucleo-f303k8,$(BOARD)))
+  CFLAGS += -DTHREAD_STACKSIZE_DEFAULT=512
+endif
 
-# AVR platform: unknown type name: clockid_t
-# hifive1: not enough memory for thread stacks
-
-BOARD_INSUFFICIENT_MEMORY := nucleo-f031k6
+# The test compiles, but these boards have too little RAM for
+# dynamic allocation of thread stacks
+BOARD_BLACKLIST := arduino-nano arduino-duemilanove \
+                   arduino-uno nucleo-f031k6 stm32f030f4-demo
 
 USEMODULE += posix_headers
 USEMODULE += pthread
-
-TEST_ON_CI_WHITELIST += all
 
 include $(RIOTBASE)/Makefile.include

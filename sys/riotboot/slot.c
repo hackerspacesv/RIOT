@@ -40,7 +40,7 @@ const riotboot_hdr_t * const riotboot_slots[] = {
 };
 
 /* Calculate the number of slots */
-const unsigned riotboot_slot_numof = sizeof(riotboot_slots) / sizeof(riotboot_hdr_t*);
+const unsigned riotboot_slot_numof = ARRAY_SIZE(riotboot_slots);
 
 static void _riotboot_slot_jump_to_image(const riotboot_hdr_t *hdr)
 {
@@ -92,4 +92,9 @@ const riotboot_hdr_t *riotboot_slot_get_hdr(unsigned slot)
     assert(slot < riotboot_slot_numof);
 
     return riotboot_slots[slot];
+}
+
+size_t riotboot_slot_offset(unsigned slot)
+{
+    return (size_t)riotboot_slot_get_hdr(slot) - CPU_FLASH_BASE;
 }

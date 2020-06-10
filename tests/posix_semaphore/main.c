@@ -293,7 +293,6 @@ void test4(void)
 int main(void)
 {
     msg_init_queue(main_msg_queue, SEMAPHORE_MSG_QUEUE_SIZE);
-    xtimer_init();
     puts("######################### TEST1:");
     test1();
     puts("######################### TEST2:");

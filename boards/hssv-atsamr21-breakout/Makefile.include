@@ -1,9 +1,5 @@
-# define the cpu used by the atsamr21-breakout board
-export CPU = samd21
-export CPU_MODEL = samr21g18a
-
 # export needed for flash rule
-export PORT_LINUX ?= /dev/ttyACM0
+PORT_LINUX ?= /dev/ttyACM0
 
 # setup serial terminal
 include $(RIOTMAKE)/tools/serial.inc.mk

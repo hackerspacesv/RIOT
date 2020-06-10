@@ -22,6 +22,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <errno.h>
 
@@ -78,6 +79,7 @@ void i2c_init(i2c_t dev)
     int32_t tmp_baud;
 
     assert(dev < I2C_NUMOF);
+
     /* Initialize mutex */
     mutex_init(&locks[dev]);
     /* DISABLE I2C MASTER */
@@ -91,7 +93,7 @@ void i2c_init(i2c_t dev)
     sercom_clk_en(bus(dev));
 
     /* I2C using CLK GEN 0 */
-    sercom_set_gen(bus(dev),i2c_config[dev].gclk_src);
+    sercom_set_gen(bus(dev), i2c_config[dev].gclk_src);
 
     /* Check if module is enabled. */
     if (bus(dev)->CTRLA.reg & SERCOM_I2CM_CTRLA_ENABLE) {
@@ -136,7 +138,7 @@ void i2c_init(i2c_t dev)
             return;
     }
     /* Get the baudrate */
-    tmp_baud = (int32_t)(((CLOCK_CORECLOCK +
+    tmp_baud = (int32_t)(((sam0_gclk_freq(i2c_config[dev].gclk_src) +
                (2 * (i2c_config[dev].speed)) - 1) /
                (2 * (i2c_config[dev].speed))) -
                (i2c_config[dev].speed == I2C_SPEED_HIGH ? 1 : 5));
@@ -164,12 +166,36 @@ int i2c_acquire(i2c_t dev)
     return 0;
 }
 
-int i2c_release(i2c_t dev)
+void i2c_release(i2c_t dev)
 {
     assert(dev < I2C_NUMOF);
     mutex_unlock(&locks[dev]);
-    return 0;
 }
+
+#ifdef MODULE_PERIPH_I2C_RECONFIGURE
+void i2c_init_pins(i2c_t dev)
+{
+    assert(dev < I2C_NUMOF);
+
+    _i2c_poweron(dev);
+
+    gpio_init_mux(i2c_config[dev].scl_pin, i2c_config[dev].mux);
+    gpio_init_mux(i2c_config[dev].sda_pin, i2c_config[dev].mux);
+
+    mutex_unlock(&locks[dev]);
+}
+
+void i2c_deinit_pins(i2c_t dev)
+{
+    assert(dev < I2C_NUMOF);
+
+    mutex_lock(&locks[dev]);
+    _i2c_poweroff(dev);
+
+    gpio_disable_mux(i2c_config[dev].sda_pin);
+    gpio_disable_mux(i2c_config[dev].scl_pin);
+}
+#endif
 
 int i2c_read_bytes(i2c_t dev, uint16_t addr,
                    void *data, size_t len, uint8_t flags)
