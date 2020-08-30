@@ -108,6 +108,11 @@ void auto_init(void)
         extern void openthread_bootstrap(void);
         openthread_bootstrap();
     }
+    if (IS_USED(MODULE_AUTO_INIT_OPENWSN)) {
+        LOG_DEBUG("Bootstrapping openwsn.\n");
+        extern void openwsn_bootstrap(void);
+        openwsn_bootstrap();
+    }
     if (IS_USED(MODULE_GCOAP) &&
         !IS_ACTIVE(CONFIG_GCOAP_NO_AUTO_INIT)) {
         LOG_DEBUG("Auto init gcoap.\n");
@@ -220,7 +225,6 @@ void auto_init(void)
         }
     }
 
-
     if (IS_USED(MODULE_AUTO_INIT_CAN)) {
         LOG_DEBUG("Auto init CAN.\n");
 
@@ -257,5 +261,13 @@ void auto_init(void)
         LOG_DEBUG("Auto init 6LoWPAN border router DHCPv6 client\n");
         extern void gnrc_dhcpv6_client_6lbr_init(void);
         gnrc_dhcpv6_client_6lbr_init();
+    }
+
+    if (IS_USED(MODULE_AUTO_INIT_MULTIMEDIA)) {
+        LOG_DEBUG("auto_init MULTIMEDIA\n");
+        if (IS_USED(MODULE_DFPLAYER)) {
+            extern void auto_init_dfplayer(void);
+            auto_init_dfplayer();
+        }
     }
 }

@@ -43,6 +43,14 @@ ifneq (,$(filter at,$(USEMODULE)))
   USEMODULE += fmt
   USEMODULE += isrpipe
   USEMODULE += isrpipe_read_timeout
+
+  _AT_ISR_MODULE := $(filter at_urc_isr_%,$(USEMODULE))
+  ifneq (,$(_AT_ISR_MODULE))
+    # pull in the correspondant event_thread_<priority> module
+    USEMODULE += $(_AT_ISR_MODULE:at_urc_isr_%=event_thread_%)
+    USEMODULE += at_urc
+    USEMODULE += at_urc_isr
+  endif
 endif
 
 ifneq (,$(filter at24c%,$(USEMODULE)))
@@ -113,6 +121,16 @@ endif
 ifneq (,$(filter ata8520e,$(USEMODULE)))
   USEMODULE += xtimer
   USEMODULE += fmt
+  FEATURES_REQUIRED += periph_gpio
+  FEATURES_REQUIRED += periph_gpio_irq
+  FEATURES_REQUIRED += periph_spi
+endif
+
+ifneq (,$(filter atwinc15x0,$(USEMODULE)))
+  USEMODULE += luid
+  USEMODULE += netdev_eth
+  USEMODULE += xtimer
+  USEPKG += driver_atwinc15x0
   FEATURES_REQUIRED += periph_gpio
   FEATURES_REQUIRED += periph_gpio_irq
   FEATURES_REQUIRED += periph_spi
@@ -207,6 +225,12 @@ endif
 ifneq (,$(filter dcf77,$(USEMODULE)))
   FEATURES_REQUIRED += periph_gpio
   FEATURES_REQUIRED += periph_gpio_irq
+  USEMODULE += xtimer
+endif
+
+ifneq (,$(filter dfplayer,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_uart
+  FEATURES_REQUIRED += periph_gpio
   USEMODULE += xtimer
 endif
 
@@ -464,6 +488,18 @@ ifneq (,$(filter mag3110,$(USEMODULE)))
   FEATURES_REQUIRED += periph_i2c
 endif
 
+ifneq (,$(filter mhz19_pwm,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_gpio
+  USEMODULE += xtimer
+  USEMODULE += mhz19
+endif
+
+ifneq (,$(filter mhz19_uart,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_uart
+  USEMODULE += xtimer
+  USEMODULE += mhz19
+endif
+
 ifneq (,$(filter mma7660,$(USEMODULE)))
   FEATURES_REQUIRED += periph_i2c
 endif
@@ -516,6 +552,10 @@ endif
 ifneq (,$(filter mtd_%,$(USEMODULE)))
   USEMODULE += mtd
 
+  ifneq (,$(filter mtd_at24cxxx,$(USEMODULE)))
+    USEMODULE += at24cxxx
+  endif
+
   ifneq (,$(filter mtd_at25xxx,$(USEMODULE)))
     USEMODULE += at25xxx
   endif
@@ -566,6 +606,10 @@ endif
 ifneq (,$(filter opt3001,$(USEMODULE)))
   FEATURES_REQUIRED += periph_i2c
   USEMODULE += xtimer
+endif
+
+ifneq (,$(filter pca9633,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_i2c
 endif
 
 ifneq (,$(filter pca9685,$(USEMODULE)))
@@ -639,7 +683,15 @@ endif
 ifneq (,$(filter sdcard_spi,$(USEMODULE)))
   FEATURES_REQUIRED += periph_gpio
   FEATURES_REQUIRED += periph_spi
+  FEATURES_OPTIONAL += periph_spi_reconfigure
   DEFAULT_MODULE += auto_init_storage
+  USEMODULE += checksum
+  USEMODULE += xtimer
+endif
+
+ifneq (,$(filter sdp3x,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_i2c
+  FEATURES_REQUIRED += periph_gpio_irq
   USEMODULE += checksum
   USEMODULE += xtimer
 endif

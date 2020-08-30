@@ -46,6 +46,7 @@ enum {
     SAM0_GCLK_MAIN  = 0,                 /**< Main clock */
     SAM0_GCLK_8MHZ  = 1,                 /**< 8MHz clock */
     SAM0_GCLK_32KHZ = 2,                 /**< 32 kHz clock */
+    SAM0_GCLK_48MHZ = 3,                 /**< 48MHz clock */
 };
 /** @} */
 
@@ -71,6 +72,18 @@ typedef enum {
  * @brief   The MCU has two DAC outputs.
  */
 #define DAC_NUMOF           (2)
+
+/**
+ * @name    Real time counter configuration
+ * @{
+ */
+#define RTT_MAX_VALUE       (0xffffffff)
+#define RTT_CLOCK_FREQUENCY (32768U)                      /* in Hz */
+#define RTT_MIN_FREQUENCY   (RTT_CLOCK_FREQUENCY / 512U)  /* in Hz */
+#define RTT_MAX_FREQUENCY   (RTT_CLOCK_FREQUENCY)         /* in Hz */
+/* determined by tests/ztimer_underflow */
+#define RTT_MIN_OFFSET      (8U)
+/** @} */
 
 #ifdef __cplusplus
 }

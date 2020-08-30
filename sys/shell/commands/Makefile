@@ -5,6 +5,9 @@ SRC = shell_commands.c sc_sys.c
 ifneq (,$(filter app_metadata,$(USEMODULE)))
   SRC += sc_app_metadata.c
 endif
+ifneq (,$(filter dfplayer,$(USEMODULE)))
+  SRC += sc_dfplayer.c
+endif
 ifneq (,$(filter mci,$(USEMODULE)))
   SRC += sc_disk.c
 endif
@@ -101,6 +104,10 @@ endif
 
 ifneq (,$(filter nimble_netif,$(USEMODULE)))
   SRC += sc_nimble_netif.c
+endif
+
+ifneq (,$(filter nimble_statconn,$(USEMODULE)))
+  SRC += sc_nimble_statconn.c
 endif
 
 ifneq (,$(filter suit_coap,$(USEMODULE)))

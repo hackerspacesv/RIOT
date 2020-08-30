@@ -86,10 +86,8 @@ static const tc32_conf_t timer_config[] = {
         .gclk_ctrl      = GCLK_CLKCTRL_ID_TCC2_TC3,
 #if CLOCK_USE_PLL || CLOCK_USE_XOSC32_DFLL
         .gclk_src       = SAM0_GCLK_1MHZ,
-        .prescaler      = TC_CTRLA_PRESCALER_DIV1,
 #else
         .gclk_src       = SAM0_GCLK_MAIN,
-        .prescaler      = TC_CTRLA_PRESCALER_DIV8,
 #endif
         .flags          = TC_CTRLA_MODE_COUNT16,
     },
@@ -100,10 +98,8 @@ static const tc32_conf_t timer_config[] = {
         .gclk_ctrl      = GCLK_CLKCTRL_ID_TC4_TC5,
 #if CLOCK_USE_PLL || CLOCK_USE_XOSC32_DFLL
         .gclk_src       = SAM0_GCLK_1MHZ,
-        .prescaler      = TC_CTRLA_PRESCALER_DIV1,
 #else
         .gclk_src       = SAM0_GCLK_MAIN,
-        .prescaler      = TC_CTRLA_PRESCALER_DIV8,
 #endif
         .flags          = TC_CTRLA_MODE_COUNT32,
     }
@@ -153,6 +149,47 @@ static const uart_conf_t uart_config[] = {
 /** @} */
 
 /**
+ * @name    PWM configuration
+ * @{
+ */
+#define PWM_0_EN            1
+#define PWM_1_EN            1
+
+#if PWM_0_EN
+/* PWM0 channels */
+static const pwm_conf_chan_t pwm_chan0_config[] = {
+    /* GPIO pin, MUX value, TCC channel */
+    { GPIO_PIN(PA,  4), GPIO_MUX_E, 0 },
+    { GPIO_PIN(PA,  5), GPIO_MUX_E, 1 },
+    { GPIO_PIN(PA, 19), GPIO_MUX_F, 3 },
+    { GPIO_PIN(PA, 22), GPIO_MUX_F, 4 },
+    { GPIO_PIN(PA, 23), GPIO_MUX_F, 5 },
+};
+#endif
+#if PWM_1_EN
+/* PWM1 channels */
+static const pwm_conf_chan_t pwm_chan1_config[] = {
+    /* GPIO pin, MUX value, TCC channel */
+    { GPIO_PIN(PA, 6), GPIO_MUX_E, 0 },
+    { GPIO_PIN(PA, 7), GPIO_MUX_E, 1 },
+};
+#endif
+
+/* PWM device configuration */
+static const pwm_conf_t pwm_config[] = {
+#if PWM_0_EN
+    {TCC_CONFIG(TCC0), pwm_chan0_config, ARRAY_SIZE(pwm_chan0_config), SAM0_GCLK_MAIN},
+#endif
+#if PWM_1_EN
+    {TCC_CONFIG(TCC1), pwm_chan1_config, ARRAY_SIZE(pwm_chan1_config), SAM0_GCLK_MAIN},
+#endif
+};
+
+/* number of devices that are actually defined */
+#define PWM_NUMOF           ARRAY_SIZE(pwm_config)
+/** @} */
+
+/**
  * @name SPI configuration
  * @{
  */
@@ -168,6 +205,10 @@ static const spi_conf_t spi_config[] = {
         .miso_pad = SPI_PAD_MISO_2,
         .mosi_pad = SPI_PAD_MOSI_0_SCK_1,
         .gclk_src = SAM0_GCLK_MAIN,
+#ifdef MODULE_PERIPH_DMA
+        .tx_trigger = SERCOM1_DMAC_ID_TX,
+        .rx_trigger = SERCOM1_DMAC_ID_RX,
+#endif
     },
     {   /* D0 … D2 (user pins) */
         .dev      = &SERCOM0->SPI,
@@ -180,6 +221,10 @@ static const spi_conf_t spi_config[] = {
         .miso_pad = SPI_PAD_MISO_2,
         .mosi_pad = SPI_PAD_MOSI_0_SCK_1,
         .gclk_src = SAM0_GCLK_MAIN,
+#ifdef MODULE_PERIPH_DMA
+        .tx_trigger = SERCOM0_DMAC_ID_TX,
+        .rx_trigger = SERCOM0_DMAC_ID_RX,
+#endif
     },
 };
 
@@ -208,8 +253,9 @@ static const i2c_conf_t i2c_config[] = {
  * @name    RTT configuration
  * @{
  */
-#define RTT_MAX_VALUE       (0xffffffff)
+#ifndef RTT_FREQUENCY
 #define RTT_FREQUENCY       (32768U)    /* in Hz. For changes see `rtt.c` */
+#endif
 /** @} */
 
 /**

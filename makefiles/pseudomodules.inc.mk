@@ -1,4 +1,8 @@
 PSEUDOMODULES += at_urc
+PSEUDOMODULES += at_urc_isr
+PSEUDOMODULES += at_urc_isr_low
+PSEUDOMODULES += at_urc_isr_medium
+PSEUDOMODULES += at_urc_isr_highest
 PSEUDOMODULES += at24c%
 PSEUDOMODULES += base64url
 PSEUDOMODULES += can_mbox
@@ -9,6 +13,7 @@ PSEUDOMODULES += conn_can_isotp_multi
 PSEUDOMODULES += cord_ep_standalone
 PSEUDOMODULES += core_%
 PSEUDOMODULES += cortexm_fpu
+PSEUDOMODULES += cortexm_svc
 PSEUDOMODULES += cpu_check_address
 PSEUDOMODULES += crypto_%	# crypto_aes or crypto_3des
 PSEUDOMODULES += devfs_%
@@ -93,6 +98,7 @@ PSEUDOMODULES += saul_nrf_temperature
 PSEUDOMODULES += scanf_float
 PSEUDOMODULES += sched_cb
 PSEUDOMODULES += semtech_loramac_rx
+PSEUDOMODULES += shell_hooks
 PSEUDOMODULES += slipdev_stdio
 PSEUDOMODULES += sock
 PSEUDOMODULES += sock_async
@@ -106,6 +112,8 @@ PSEUDOMODULES += stdio_cdc_acm
 PSEUDOMODULES += stdio_uart_rx
 PSEUDOMODULES += suit_transport_%
 PSEUDOMODULES += wakaama_objects_%
+PSEUDOMODULES += wifi_enterprise
+PSEUDOMODULES += xtimer_on_ztimer
 PSEUDOMODULES += zptr
 PSEUDOMODULES += ztimer%
 
@@ -162,6 +170,10 @@ PSEUDOMODULES += hmc5883l_int
 
 # interrupt variant of the ITG320X driver as pseudo module
 PSEUDOMODULES += itg320x_int
+
+# include variants of MH-Z19 drivers as pseudo modules
+PSEUDOMODULES += mhz19_uart
+PSEUDOMODULES += mhz19_pwm
 
 # include variants of MPU9X50 drivers as pseudo modules
 PSEUDOMODULES += mpu9150
@@ -244,6 +256,7 @@ PSEUDOMODULES += test_utils_interactive_sync_shell
 PSEUDOMODULES += auto_init_%
 NO_PSEUDOMODULES += auto_init_can
 NO_PSEUDOMODULES += auto_init_loramac
+NO_PSEUDOMODULES += auto_init_multimedia
 NO_PSEUDOMODULES += auto_init_security
 NO_PSEUDOMODULES += auto_init_storage
 NO_PSEUDOMODULES += auto_init_usbus

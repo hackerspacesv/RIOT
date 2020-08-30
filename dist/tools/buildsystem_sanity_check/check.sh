@@ -107,10 +107,13 @@ UNEXPORTED_VARIABLES+=('FLASH_TARGET_TYPE')
 UNEXPORTED_VARIABLES+=('PYOCD_ADAPTER_INIT')
 UNEXPORTED_VARIABLES+=('JLINK_DEVICE' 'JLINK_IF')
 UNEXPORTED_VARIABLES+=('JLINK_PRE_FLASH' 'JLINK_RESET_FILE')
+UNEXPORTED_VARIABLES+=('GIT_CACHE' 'GIT_CACHE_DIR')
+UNEXPORTED_VARIABLES+=('LINKXX')
+UNEXPORTED_VARIABLES+=('APPDEPS' 'BUILDDEPS' 'DEBUGDEPS')
 
 EXPORTED_VARIABLES_ONLY_IN_VARS=()
-EXPORTED_VARIABLES_ONLY_IN_VARS+=('APPDEPS')
 EXPORTED_VARIABLES_ONLY_IN_VARS+=('CPU_ARCH')
+EXPORTED_VARIABLES_ONLY_IN_VARS+=('CPU_CORE')
 EXPORTED_VARIABLES_ONLY_IN_VARS+=('CPU_FAM')
 EXPORTED_VARIABLES_ONLY_IN_VARS+=('NATIVEINCLUDES')
 EXPORTED_VARIABLES_ONLY_IN_VARS+=('UNDEF')
@@ -119,6 +122,10 @@ EXPORTED_VARIABLES_ONLY_IN_VARS+=('TARGET_ARCH')
 EXPORTED_VARIABLES_ONLY_IN_VARS+=('TOOLCHAIN')
 EXPORTED_VARIABLES_ONLY_IN_VARS+=('WERROR')
 EXPORTED_VARIABLES_ONLY_IN_VARS+=('WPEDANTIC')
+EXPORTED_VARIABLES_ONLY_IN_VARS+=('CC[ =]' 'CXX' 'CCAS')
+EXPORTED_VARIABLES_ONLY_IN_VARS+=('AR[ =]' 'RANLIB')
+EXPORTED_VARIABLES_ONLY_IN_VARS+=('AS' 'NM' 'SIZE' 'LINK')
+EXPORTED_VARIABLES_ONLY_IN_VARS+=('OBJDUMP' 'OBJCOPY')
 
 check_not_exporting_variables() {
     local patterns=()
@@ -269,6 +276,33 @@ check_files_in_boards_not_reference_board_var() {
         | error_with_message 'Code in boards/ should not use $(BOARDS) to reference files since this breaks external BOARDS changing BOARDSDIR"'
 }
 
+check_no_pseudomodules_in_makefile_dep() {
+    local patterns=()
+    local pathspec=()
+
+    patterns+=(-e 'PSEUDOMODULES[\t ]*[+:]*=')
+
+    pathspec+=('**/Makefile.dep')
+
+    git -C "${RIOTBASE}" grep "${patterns[@]}" -- "${pathspec[@]}" \
+        | error_with_message "Don't define PSEUDOMODULES in Makefile.dep"
+}
+
+check_no_usemodules_in_makefile_include() {
+    local patterns=()
+    local pathspec=()
+
+    patterns+=(-e 'USEMODULE[\t ]*[+:]*=')
+
+    pathspec+=('**/Makefile.include')
+    pathspec+=(':!Makefile.include')
+    pathspec+=(':!tests/**/Makefile.include')
+    pathspec+=(':!examples/**/Makefile.include')
+
+    git -C "${RIOTBASE}" grep "${patterns[@]}" -- "${pathspec[@]}" \
+        | error_with_message "Don't include USEMODULE in Makefile.include"
+}
+
 error_on_input() {
     ! grep ''
 }
@@ -285,6 +319,8 @@ all_checks() {
     checks_tests_application_not_defined_in_makefile
     checks_develhelp_not_defined_via_cflags
     check_files_in_boards_not_reference_board_var
+    check_no_pseudomodules_in_makefile_dep
+    check_no_usemodules_in_makefile_include
 }
 
 main() {

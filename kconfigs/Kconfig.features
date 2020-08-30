@@ -57,10 +57,20 @@ config HAS_CPU_CHECK_ADDRESS
     help
         Indicates that address validity check is supported.
 
+config HAS_EMULATOR_RENODE
+    bool
+    help
+        Indicates that the platform is compatible with the Renode emulator.
+
 config HAS_ETHERNET
     bool
     help
         Indicates that Ethernet connectivity is present.
+
+config HAS_NO_IDLE_THREAD
+    bool
+    help
+        Indicates that this MCU doesn't need the idle thread
 
 config HAS_MOTOR_DRIVER
     bool
@@ -194,6 +204,11 @@ config HAS_PERIPH_SPI
     bool
     help
         Indicates that an SPI peripheral is present.
+
+config HAS_PERIPH_SPI_RECONFIGURE
+    bool
+    help
+        Indicates that the SPI peripheral allows pin reconfiguration.
 
 config HAS_PERIPH_SPI_GPIO_MODE
     bool

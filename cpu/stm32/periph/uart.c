@@ -36,19 +36,34 @@
 
 #if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0) || \
     defined(CPU_FAM_STM32F3) || defined(CPU_FAM_STM32L4) || \
-    defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32F7)
+    defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32F7) || \
+    defined(CPU_FAM_STM32G4)
 #define ISR_REG     ISR
 #define ISR_TXE     USART_ISR_TXE
+#define ISR_RXNE    USART_ISR_RXNE
 #define ISR_TC      USART_ISR_TC
 #define TDR_REG     TDR
+#define RDR_REG     RDR
 #else
 #define ISR_REG     SR
 #define ISR_TXE     USART_SR_TXE
+#define ISR_RXNE    USART_SR_RXNE
 #define ISR_TC      USART_SR_TC
 #define TDR_REG     DR
+#define RDR_REG     DR
 #endif
 
 #define RXENABLE            (USART_CR1_RE | USART_CR1_RXNEIE)
+
+#ifdef MODULE_PERIPH_UART_NONBLOCKING
+
+#include "tsrb.h"
+/**
+ * @brief   Allocate for tx ring buffers
+ */
+static tsrb_t uart_tx_rb[UART_NUMOF];
+static uint8_t uart_tx_rb_buf[UART_NUMOF][UART_TXBUF_SIZE];
+#endif
 
 /**
  * @brief   Allocate memory to store the callback functions
@@ -69,7 +84,7 @@ static inline USART_TypeDef *dev(uart_t uart)
 
 static inline void uart_init_usart(uart_t uart, uint32_t baudrate);
 #if defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32L4) || \
-    defined(CPU_FAM_STM32WB)
+    defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32G4)
 #ifdef MODULE_PERIPH_LPUART
 static inline void uart_init_lpuart(uart_t uart, uint32_t baudrate);
 #endif
@@ -102,9 +117,6 @@ static inline void uart_init_cts_pin(uart_t uart)
 static inline void uart_init_pins(uart_t uart, uart_rx_cb_t rx_cb)
 {
      /* configure TX pin */
-    gpio_init(uart_config[uart].tx_pin, GPIO_OUT);
-    /* set TX pin high to avoid garbage during further initialization */
-    gpio_set(uart_config[uart].tx_pin);
 #ifdef CPU_FAM_STM32F1
     gpio_init_af(uart_config[uart].tx_pin, GPIO_AF_OUT_PP);
 #else
@@ -152,7 +164,10 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     isr_ctx[uart].arg       = arg;
     isr_ctx[uart].data_mask = 0xFF;
 
-    uart_init_pins(uart, rx_cb);
+#ifdef MODULE_PERIPH_UART_NONBLOCKING
+    /* set up the TX buffer */
+    tsrb_init(&uart_tx_rb[uart], uart_tx_rb_buf[uart], UART_TXBUF_SIZE);
+#endif
 
     uart_enable_clock(uart);
 
@@ -162,7 +177,7 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     dev(uart)->CR3 = 0;
 
 #if defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32L4) || \
-    defined(CPU_FAM_STM32WB)
+    defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32G4)
     switch (uart_config[uart].type) {
         case STM32_USART:
             uart_init_usart(uart, baudrate);
@@ -179,6 +194,12 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     uart_init_usart(uart, baudrate);
 #endif
 
+    /* Attach pins to enabled UART periph. Note: It is important that the UART
+     * interface is configured prior to attaching the pins, as otherwise the
+     * signal level flickers during initialization resulting in garbage being
+     * sent. */
+    uart_init_pins(uart, rx_cb);
+
     /* enable RX interrupt if applicable */
     if (rx_cb) {
         NVIC_EnableIRQ(uart_config[uart].irqn);
@@ -187,6 +208,10 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     else {
         dev(uart)->CR1 = (USART_CR1_UE | USART_CR1_TE);
     }
+
+#ifdef MODULE_PERIPH_UART_NONBLOCKING
+    NVIC_EnableIRQ(uart_config[uart].irqn);
+#endif
 
 #ifdef MODULE_PERIPH_UART_HW_FC
     if (uart_config[uart].cts_pin != GPIO_UNDEF) {
@@ -264,7 +289,7 @@ static inline void uart_init_usart(uart_t uart, uint32_t baudrate)
 }
 
 #if defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32L4) || \
-    defined(CPU_FAM_STM32WB)
+    defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32G4)
 #ifdef MODULE_PERIPH_LPUART
 static inline void uart_init_lpuart(uart_t uart, uint32_t baudrate)
 {
@@ -305,10 +330,12 @@ static inline void send_byte(uart_t uart, uint8_t byte)
     dev(uart)->TDR_REG = byte;
 }
 
+#ifndef MODULE_PERIPH_UART_NONBLOCKING
 static inline void wait_for_tx_complete(uart_t uart)
 {
     while (!(dev(uart)->ISR_REG & ISR_TC)) {}
 }
+#endif
 
 void uart_write(uart_t uart, const uint8_t *data, size_t len)
 {
@@ -358,12 +385,28 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
         return;
     }
 #endif
+#ifdef MODULE_PERIPH_UART_NONBLOCKING
+    for (size_t i = 0; i < len; i++) {
+        dev(uart)->CR1 |= (USART_CR1_TCIE);
+        if (irq_is_in() || __get_PRIMASK()) {
+            /* if ring buffer is full free up a spot */
+            if (tsrb_full(&uart_tx_rb[uart])) {
+                send_byte(uart, tsrb_get_one(&uart_tx_rb[uart]));
+            }
+            tsrb_add_one(&uart_tx_rb[uart], data[i]);
+        }
+        else {
+            while (tsrb_add_one(&uart_tx_rb[uart], data[i]) < 0) {}
+        }
+    }
+#else
     for (size_t i = 0; i < len; i++) {
         send_byte(uart, data[i]);
     }
     /* make sure the function is synchronous by waiting for the transfer to
      * finish */
     wait_for_tx_complete(uart);
+#endif
 }
 
 void uart_poweron(uart_t uart)
@@ -399,35 +442,45 @@ void uart_poweroff(uart_t uart)
     uart_disable_clock(uart);
 }
 
+#ifdef MODULE_PERIPH_UART_NONBLOCKING
+static inline void irq_handler_tx(uart_t uart)
+{
+    int byte = tsrb_get_one(&uart_tx_rb[uart]);
+    if (byte >= 0) {
+        dev(uart)->TDR_REG = byte;
+    }
+
+    /* disable the interrupt if there are no more bytes to send */
+    if (tsrb_empty(&uart_tx_rb[uart])) {
+        dev(uart)->CR1 &= ~(USART_CR1_TCIE);
+    }
+}
+#endif
+
 static inline void irq_handler(uart_t uart)
 {
-#if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0) || \
-    defined(CPU_FAM_STM32F3) || defined(CPU_FAM_STM32L4) || \
-    defined(CPU_FAM_STM32F7) || defined(CPU_FAM_STM32WB)
+    uint32_t status = dev(uart)->ISR_REG;
 
-    uint32_t status = dev(uart)->ISR;
-
-    if (status & USART_ISR_RXNE) {
-        isr_ctx[uart].rx_cb(isr_ctx[uart].arg,
-                            (uint8_t)dev(uart)->RDR & isr_ctx[uart].data_mask);
+#ifdef MODULE_PERIPH_UART_NONBLOCKING
+    if (status & ISR_TC) {
+        irq_handler_tx(uart);
     }
+#endif
+
+    if (status & ISR_RXNE) {
+        isr_ctx[uart].rx_cb(isr_ctx[uart].arg,
+                            (uint8_t)dev(uart)->RDR_REG & isr_ctx[uart].data_mask);
+    }
+#if defined(USART_ISR_ORE)
+    /* USART_ISR_ORE is cleared by writing 1 to ORECF */
     if (status & USART_ISR_ORE) {
-        dev(uart)->ICR |= USART_ICR_ORECF;    /* simply clear flag on overrun */
+        dev(uart)->ICR |= USART_ICR_ORECF;
     }
-
 #else
-
-    uint32_t status = dev(uart)->SR;
-
-    if (status & USART_SR_RXNE) {
-        isr_ctx[uart].rx_cb(isr_ctx[uart].arg,
-                            (uint8_t)dev(uart)->DR & isr_ctx[uart].data_mask);
-    }
+    /* USART_SR_ORE is cleared by reading SR and DR sequentially */
     if (status & USART_SR_ORE) {
-        /* ORE is cleared by reading SR and DR sequentially */
         dev(uart)->DR;
     }
-
 #endif
 
     cortexm_isr_end();

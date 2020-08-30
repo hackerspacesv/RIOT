@@ -470,6 +470,15 @@ ifneq (,$(filter newlib,$(USEMODULE)))
   endif
 endif
 
+ifneq (,$(filter posix_select,$(USEMODULE)))
+  ifneq (,$(filter posix_sockets,$(USEMODULE)))
+    USEMODULE += sock_async
+  endif
+  USEMODULE += core_thread_flags
+  USEMODULE += posix_headers
+  USEMODULE += xtimer
+endif
+
 ifneq (,$(filter posix_sockets,$(USEMODULE)))
   USEMODULE += bitfield
   USEMODULE += random
@@ -777,6 +786,10 @@ ifneq (,$(filter random,$(USEMODULE)))
     USEMODULE += hashes
   endif
 
+  ifneq (,$(filter prng_hwrng,$(USEMODULE)))
+    FEATURES_REQUIRED += periph_hwrng
+  endif
+
   ifeq (,$(filter puf_sram,$(USEMODULE)))
     FEATURES_OPTIONAL += periph_hwrng
   endif
@@ -907,9 +920,22 @@ ifneq (,$(filter nimble_%,$(USEMODULE)))
   USEPKG += nimble
 endif
 
+ifneq (,$(filter cord_common,$(USEMODULE)))
+  USEMODULE += fmt
+  USEMODULE += luid
+  USEMODULE += gcoap
+endif
+
+ifneq (,$(filter cord_lc cord_ep,$(USEMODULE)))
+  USEMODULE += core_thread_flags
+  USEMODULE += cord_common
+  ifneq (,$(filter shell_commands,$(USEMODULE)))
+    USEMODULE += sock_util
+  endif
+endif
+
 ifneq (,$(filter cord_epsim,$(USEMODULE)))
   USEMODULE += cord_common
-  USEMODULE += gcoap
 endif
 
 ifneq (,$(filter cord_ep_standalone,$(USEMODULE)))
@@ -917,18 +943,8 @@ ifneq (,$(filter cord_ep_standalone,$(USEMODULE)))
   USEMODULE += xtimer
 endif
 
-ifneq (,$(filter cord_ep,$(USEMODULE)))
-  USEMODULE += cord_common
-  USEMODULE += core_thread_flags
-  USEMODULE += gcoap
-  ifneq (,$(filter shell_commands,$(USEMODULE)))
-    USEMODULE += sock_util
-  endif
-endif
-
-ifneq (,$(filter cord_common,$(USEMODULE)))
-  USEMODULE += fmt
-  USEMODULE += luid
+ifneq (,$(filter cord_lc,$(USEMODULE)))
+  USEMODULE += clif
 endif
 
 ifneq (,$(filter tlsf-malloc,$(USEMODULE)))
@@ -1070,6 +1086,12 @@ FEATURES_OPTIONAL += periph_pm
 
 # always select provided architecture features
 FEATURES_REQUIRED += $(filter arch_%,$(FEATURES_PROVIDED))
+
+# always select CPU core features
+FEATURES_REQUIRED += $(filter cpu_core_%,$(FEATURES_PROVIDED))
+
+# don't use idle thread if architecture has needed support
+FEATURES_OPTIONAL += no_idle_thread
 
 ifneq (,$(filter ecc_%,$(USEMODULE)))
   USEMODULE += ecc

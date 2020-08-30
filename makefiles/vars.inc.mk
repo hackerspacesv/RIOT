@@ -12,7 +12,8 @@ export APPLICATION_MODULE    # The application module name.
 export BOARD                 # The board to compile the application for.
 export CPU                   # The CPU, set by the board's Makefile.features.
 export CPU_MODEL             # The specific identifier of the used CPU, used for some CPU implementations to differentiate between different memory layouts. Set by the board's Makefile.features.
-export CPU_ARCH              # The specific identifier of the core present in the CPU, used currently only for ARM CPU's. Needed for depency resolution.
+export CPU_CORE              # The specific identifier of the core present in the CPU. Needed for depency resolution.
+export CPU_ARCH              # The specific identifier of the architecture of the core defined in CPU_CORE.
 export CPU_FAM               # An intermediate identifier between CPU and CPU_MODEL that represents a sub-group of a Manufacturers CPU's.
 export MCU                   # The MCU, set by the board's Makefile.include, or defaulted to the same value as CPU.
 export INCLUDES              # The extra include paths, set by the various Makefile.include files.
@@ -22,7 +23,7 @@ export NATIVEINCLUDES        # The native include paths, set by the various nati
 export USEMODULE             # Sys Module dependencies of the application. Set in the application's Makefile.
 export USEPKG                # Pkg dependencies (third party modules) of the application. Set in the application's Makefile.
 export DISABLE_MODULE        # Used in the application's Makefile to suppress DEFAULT_MODULEs.
-export APPDEPS               # Files / Makefile targets that need to be created before the application can be build. Set in the application's Makefile.
+# APPDEPS                    # Files / Makefile targets that need to be created before the application can be build. Set in the application's Makefile.
 # BUILDDEPS                  # Files / Makefile targets that need to be created before starting to build.
 # DEBUGDEPS                  # Files / Makefile targets that need to be created before starting a debug session.
 
@@ -67,6 +68,8 @@ export ARFLAGS               # Command-line options to pass to AR, default `rcs`
 export AS                    # The assembler.
 export ASFLAGS               # Flags for the assembler.
 export LINK                  # The command used to link the files. Must take the same parameters as GCC, i.e. "ld" won't work.
+export NM                    # The command used to list symbols from objet files
+export RANLIB                # The command used to generate an index to the contents of an archive
 # LINKFLAGS                  # Flags to supply in the linking step.
 export LTOFLAGS              # extra CFLAGS for compiling with link time optimization
 export OBJCOPY               # The command used to create the HEXFILE and BINFILE.
@@ -80,8 +83,8 @@ export WERROR                # Treat all compiler warnings as errors if set to 1
 export WPEDANTIC             # Issue all (extensive) compiler warnings demanded by strict C/C++
 # EEPROM_FILE                # (Native only!) file path where the content of the EEPROM is stored
 
-export GITCACHE              # path to git-cache executable
-export GIT_CACHE_DIR         # path to git-cache cache directory
+# GITCACHE                   # path to git-cache executable
+# GIT_CACHE_DIR              # path to git-cache cache directory, only used with packages
 # FLASHER                    # The command to call on "make flash".
 # PROG_DEV                   # The device to connect the FLASHER and DEBUGGER
 # FFLAGS                     # The parameters to supply to FLASHER.

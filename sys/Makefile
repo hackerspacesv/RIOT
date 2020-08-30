@@ -10,6 +10,9 @@ endif
 ifneq (,$(filter posix_inet,$(USEMODULE)))
   DIRS += posix/inet
 endif
+ifneq (,$(filter posix_select,$(USEMODULE)))
+  DIRS += posix/select
+endif
 ifneq (,$(filter posix_semaphore,$(USEMODULE)))
   DIRS += posix/semaphore
 endif
@@ -150,6 +153,9 @@ ifneq (,$(filter cord_epsim,$(USEMODULE)))
 endif
 ifneq (,$(filter cord_ep,$(USEMODULE)))
     DIRS += net/application_layer/cord/ep
+endif
+ifneq (,$(filter cord_lc,$(USEMODULE)))
+    DIRS += net/application_layer/cord/lc
 endif
 ifneq (,$(filter bluetil_%,$(USEMODULE)))
   DIRS += net/ble/bluetil

@@ -1304,8 +1304,11 @@ static void _test_options(gnrc_netif_t *netif)
                    (IEEE802154_LONG_ADDRESS_LEN == netif->l2addr_len));
 #if IS_USED(MODULE_GNRC_NETIF_IPV6)
 #if IS_USED(MODULE_GNRC_NETIF_6LO)
+#if IS_ACTIVE(CONFIG_GNRC_NETIF_NONSTANDARD_6LO_MTU)
             assert(netif->ipv6.mtu >= IPV6_MIN_MTU);
-            assert(netif->sixlo.max_frag_size > 0);
+#else /* IS_ACTIVE(CONFIG_GNRC_NETIF_NONSTANDARD_6LO_MTU) */
+            assert(netif->ipv6.mtu == IPV6_MIN_MTU);
+#endif /* IS_ACTIVE(CONFIG_GNRC_NETIF_NONSTANDARD_6LO_MTU) */
             assert(-ENOTSUP != netif->dev->driver->get(netif->dev, NETOPT_PROTO,
                                                        &tmp, sizeof(tmp)));
 #else   /* IS_USED(MODULE_GNRC_NETIF_6LO) */
@@ -1463,7 +1466,7 @@ static void *_gnrc_netif_thread(void *args)
     netdev_t *dev;
     int res;
     msg_t reply = { .type = GNRC_NETAPI_MSG_TYPE_ACK };
-    msg_t msg_queue[CONFIG_GNRC_NETIF_MSG_QUEUE_SIZE];
+    msg_t msg_queue[GNRC_NETIF_MSG_QUEUE_SIZE];
 
     DEBUG("gnrc_netif: starting thread %i\n", sched_active_pid);
     netif = args;
@@ -1478,7 +1481,7 @@ static void *_gnrc_netif_thread(void *args)
 #endif /* MODULE_GNRC_NETIF_EVENTS */
 
     /* setup the link-layer's message queue */
-    msg_init_queue(msg_queue, CONFIG_GNRC_NETIF_MSG_QUEUE_SIZE);
+    msg_init_queue(msg_queue, GNRC_NETIF_MSG_QUEUE_SIZE);
     /* register the event callback with the device driver */
     dev->event_callback = _event_cb;
     dev->context = netif;

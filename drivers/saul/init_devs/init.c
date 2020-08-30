@@ -171,6 +171,10 @@ void saul_init_devs(void)
         extern void auto_init_mag3110(void);
         auto_init_mag3110();
     }
+    if (IS_USED(MODULE_MHZ19)) {
+        extern void auto_init_mhz19(void);
+        auto_init_mhz19();
+    }
     if (IS_USED(MODULE_MMA7660)) {
         extern void auto_init_mma7660(void);
         auto_init_mma7660();
@@ -214,6 +218,10 @@ void saul_init_devs(void)
     if (IS_USED(MODULE_SHT2X)) {
         extern void auto_init_sht2x(void);
         auto_init_sht2x();
+    }
+    if (IS_USED(MODULE_SDP3X)) {
+        extern void auto_init_sdp3x(void);
+        auto_init_sdp3x();
     }
     if (IS_USED(MODULE_SHT3X)) {
         extern void auto_init_sht3x(void);

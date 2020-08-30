@@ -30,6 +30,10 @@ extern int _version_handler(int argc, char **argv);
 extern int _id_handler(int argc, char **argv);
 #endif
 
+#ifdef MODULE_DFPLAYER
+extern int _sc_dfplayer(int argc, char **argv);
+#endif
+
 #ifdef MODULE_HEAP_CMD
 extern int _heap_handler(int argc, char **argv);
 #endif
@@ -167,6 +171,10 @@ extern int _loramac_handler(int argc, char **argv);
 extern int _nimble_netif_handler(int argc, char **argv);
 #endif
 
+#ifdef MODULE_NIMBLE_STATCONN
+extern int _nimble_statconn_handler(int argc, char **argv);
+#endif
+
 #ifdef MODULE_SUIT_COAP
 extern int _suit_handler(int argc, char **argv);
 #endif
@@ -216,6 +224,7 @@ const shell_command_t _shell_command_list[] = {
 #ifdef MODULE_GNRC_ICMPV6_ECHO
 #ifdef MODULE_XTIMER
     { "ping6", "Ping via ICMPv6", _gnrc_icmpv6_ping },
+    { "ping", "Ping via ICMPv6", _gnrc_icmpv6_ping },
 #endif
 #endif
 #ifdef MODULE_RANDOM
@@ -295,11 +304,17 @@ const shell_command_t _shell_command_list[] = {
 #ifdef MODULE_NIMBLE_NETIF
     { "ble", "Manage BLE connections for NimBLE", _nimble_netif_handler },
 #endif
+#ifdef MODULE_NIMBLE_STATCONN
+    { "statconn", "NimBLE netif statconn", _nimble_statconn_handler},
+#endif
 #ifdef MODULE_SUIT_COAP
     { "suit", "Trigger a SUIT firmware update", _suit_handler },
 #endif
 #ifdef MODULE_CRYPTOAUTHLIB
     { "cryptoauth", "Commands for Microchip CryptoAuth devices", _cryptoauth },
+#endif
+#ifdef MODULE_DFPLAYER
+    {"dfplayer", "Control a DFPlayer Mini MP3 player", _sc_dfplayer},
 #endif
     {NULL, NULL, NULL}
 };
