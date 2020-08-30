@@ -24,6 +24,7 @@
 
 #include "board.h"
 #include "cpu.h"
+#include "irq.h"
 
 /**
  * @brief Initialize the boards on-board LEDs (green and red)
@@ -56,10 +57,6 @@ void board_init(void)
     /* Initialize UART0 on USB */
     SET_MUX_USB_MODULE;
 #endif
-#endif
-
-#ifdef MODULE_AVR_LIBC_EXTRA
-    atmega_stdio_init();
 #endif
 
     cpu_init();

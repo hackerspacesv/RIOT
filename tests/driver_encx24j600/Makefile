@@ -1,12 +1,5 @@
 include ../Makefile.tests_common
 
-BOARD_INSUFFICIENT_MEMORY := arduino-duemilanove arduino-leonardo \
-                             arduino-mega2560 arduino-nano \
-                             arduino-uno i-nucleo-lrwan1 msb-430 msb-430h \
-                             nucleo-l053r8 nucleo-f031k6 nucleo-f042k6 \
-                             nucleo-l031k6 stm32f0discovery telosb \
-                             waspmote-pro wsn430-v1_3b wsn430-v1_4 z1
-
 USEMODULE += auto_init_gnrc_netif
 USEMODULE += encx24j600
 USEMODULE += gnrc_ipv6_router_default
@@ -16,7 +9,10 @@ USEMODULE += shell_commands
 USEMODULE += ps
 
 # lower pktbuf size
-CFLAGS += -DGNRC_PKTBUF_SIZE=2048
+# Set GNRC_PKTBUF_SIZE via CFLAGS if not being set via Kconfig.
+ifndef CONFIG_GNRC_PKTBUF_SIZE
+  CFLAGS += -DCONFIG_GNRC_PKTBUF_SIZE=2048
+endif
 
 # set board specific peripheral configurations
 ifneq (,$(filter nucleo-f334r8,$(BOARD)))

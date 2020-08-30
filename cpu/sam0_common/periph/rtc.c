@@ -15,7 +15,7 @@
  * @brief       Low-level RTC driver implementation
  *
  * @author      Baptiste Clenet <bapclenet@gmail.com>
- * @autor       ported to SAML21 by FWX <FWX@dialine.fr>
+ * @author       ported to SAML21 by FWX <FWX@dialine.fr>
  * @}
  */
 
@@ -52,6 +52,14 @@ static void _wait_syncbusy(void)
 #endif
 }
 
+static void _rtt_read_req(void)
+{
+#ifdef RTC_READREQ_RREQ
+    RTC->MODE0.READREQ.reg = RTC_READREQ_RREQ;
+    _wait_syncbusy();
+#endif
+}
+
 static inline void _rtc_set_enabled(bool on)
 {
 #ifdef REG_RTC_MODE2_CTRLA
@@ -65,10 +73,10 @@ static inline void _rtc_set_enabled(bool on)
 #ifdef CPU_SAMD21
 static void _rtc_clock_setup(void)
 {
-    /* Setup clock GCLK2 with OSC32K divided by 32 */
-    GCLK->GENDIV.reg = GCLK_GENDIV_ID(2) | GCLK_GENDIV_DIV(4);
-    GCLK->GENCTRL.bit.DIVSEL = 1;
-    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN(2) | GCLK_CLKCTRL_ID_RTC;
+    /* Use 1024 Hz GCLK3 */
+    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN
+                      | GCLK_CLKCTRL_GEN(SAM0_GCLK_1KHZ)
+                      | GCLK_CLKCTRL_ID_RTC;
     while (GCLK->STATUS.bit.SYNCBUSY) {}
 }
 #else
@@ -112,15 +120,19 @@ void rtc_init(void)
     RTC->MODE2.INTENSET.reg = RTC_MODE2_INTENSET_OVF;
 
     /* Clear interrupt flags */
-    RTC->MODE2.INTFLAG.reg |= RTC_MODE2_INTFLAG_OVF;
-    RTC->MODE2.INTFLAG.reg |= RTC_MODE2_INTFLAG_ALARM0;
+    RTC->MODE2.INTFLAG.reg = RTC_MODE2_INTFLAG_OVF
+                           | RTC_MODE2_INTFLAG_ALARM0;
 
     _rtc_set_enabled(1);
 }
 
 int rtc_set_time(struct tm *time)
 {
-    if ((time->tm_year < reference_year) || (time->tm_year > reference_year + 63)) {
+    /* normalize input */
+    rtc_tm_normalize(time);
+
+    if ((time->tm_year < reference_year) ||
+        (time->tm_year > reference_year + 63)) {
         return -1;
     }
     else {
@@ -138,15 +150,19 @@ int rtc_set_time(struct tm *time)
 
 int rtc_get_time(struct tm *time)
 {
- RTC_MODE2_CLOCK_Type clock;
+    RTC_MODE2_CLOCK_Type clock;
 
     /* Read register in one time */
+    _rtt_read_req();
     clock.reg = RTC->MODE2.CLOCK.reg;
 
     time->tm_year = clock.bit.YEAR + reference_year;
-    if ((time->tm_year < reference_year) || (time->tm_year > (reference_year + 63))) {
+
+    if ((time->tm_year < reference_year) ||
+        (time->tm_year > (reference_year + 63))) {
         return -1;
     }
+
     time->tm_mon = clock.bit.MONTH - 1;
     time->tm_mday = clock.bit.DAY;
     time->tm_hour = clock.bit.HOUR;
@@ -157,8 +173,14 @@ int rtc_get_time(struct tm *time)
 
 int rtc_set_alarm(struct tm *time, rtc_alarm_cb_t cb, void *arg)
 {
+    /* prevent old alarm from ringing */
     rtc_clear_alarm();
-    if ((time->tm_year < reference_year) || (time->tm_year > (reference_year + 63))) {
+
+    /* normalize input */
+    rtc_tm_normalize(time);
+
+    if ((time->tm_year < reference_year) ||
+        (time->tm_year > (reference_year + 63))) {
         return -2;
     }
     else {
@@ -179,7 +201,7 @@ int rtc_set_alarm(struct tm *time, rtc_alarm_cb_t cb, void *arg)
     /* Enable IRQ */
     rtc_callback.cb = cb;
     rtc_callback.arg = arg;
-    RTC->MODE2.INTFLAG.reg |= RTC_MODE2_INTFLAG_ALARM0;
+    RTC->MODE2.INTFLAG.reg = RTC_MODE2_INTFLAG_ALARM0;
     RTC->MODE2.INTENSET.bit.ALARM0 = 1;
 
     return 0;
@@ -193,9 +215,11 @@ int rtc_get_alarm(struct tm *time)
     alarm.reg = RTC->MODE2.Mode2Alarm[0].ALARM.reg;
 
     time->tm_year = alarm.bit.YEAR + reference_year;
-    if ((time->tm_year < reference_year) || (time->tm_year > (reference_year + 63))) {
+    if ((time->tm_year < reference_year) ||
+        (time->tm_year > (reference_year + 63))) {
         return -1;
     }
+
     time->tm_mon = alarm.bit.MONTH - 1;
     time->tm_mday = alarm.bit.DAY;
     time->tm_hour = alarm.bit.HOUR;
@@ -236,11 +260,11 @@ void isr_rtc(void)
     if (RTC->MODE2.INTFLAG.bit.ALARM0) {
         rtc_callback.cb(rtc_callback.arg);
         /* clear flag */
-        RTC->MODE2.INTFLAG.reg |= RTC_MODE2_INTFLAG_ALARM0;
+        RTC->MODE2.INTFLAG.reg = RTC_MODE2_INTFLAG_ALARM0;
     }
     if (RTC->MODE2.INTFLAG.bit.OVF) {
         /* clear flag */
-        RTC->MODE2.INTFLAG.reg |= RTC_MODE2_INTFLAG_OVF;
+        RTC->MODE2.INTFLAG.reg = RTC_MODE2_INTFLAG_OVF;
         /* At 1Hz, RTC goes till 63 years (2^5, see 17.8.22 in datasheet)
         * Start RTC again with reference_year 64 years more (Be careful with alarm set) */
         reference_year += 64;

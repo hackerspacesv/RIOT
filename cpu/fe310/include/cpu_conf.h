@@ -34,6 +34,16 @@
 #endif
 /** @} */
 
+/**
+ * @brief   Declare the heap_stats function as available
+ */
+#define HAVE_HEAP_STATS
+
+/**
+ * @brief   This arch uses the inlined irq API.
+ */
+#define IRQ_API_INLINED     (1)
+
 #ifdef __cplusplus
 extern "C" {
 #endif

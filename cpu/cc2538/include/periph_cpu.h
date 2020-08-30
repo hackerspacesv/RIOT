@@ -53,14 +53,14 @@ typedef uint32_t gpio_t;
 /** @} */
 
 /**
- * @name    Power management configuration
+ * @name    Power mode configuration
  * @{
  */
-#define PROVIDES_PM_SET_LOWEST_CORTEXM
+#define PM_NUM_MODES        (4)
 /** @} */
 
 /**
- * @brief Define custom value to speficy undefined or unused GPIOs
+ * @brief Define custom value to specify undefined or unused GPIOs
  */
 #define GPIO_UNDEF          (0xffffffff)
 
@@ -106,6 +106,7 @@ void gpio_init_mux(gpio_t pin, uint8_t over, uint8_t sel, uint8_t func);
 #define PERIPH_I2C_NEED_WRITE_REGS
 /** @} */
 
+#ifndef DOXYGEN
 /**
  * @name   Override I2C clock speed values
  * @{
@@ -119,6 +120,8 @@ typedef enum {
     I2C_SPEED_HIGH      = 0x03,     /**< not supported */
 } i2c_speed_t;
 /** @} */
+#endif /* ndef DOXYGEN */
+
 /**
  * @brief   I2C configuration options
  */
@@ -138,6 +141,7 @@ typedef struct {
 #define PERIPH_SPI_NEEDS_TRANSFER_REGS
 /** @} */
 
+#ifndef DOXYGEN
 /**
  * @name   Override the default GPIO mode settings
  * @{
@@ -153,7 +157,7 @@ typedef enum {
     GPIO_OD_PU      = (0xff)                            /**< not supported */
 } gpio_mode_t;
 /** @} */
-
+#endif /* ndef DOXYGEN */
 
 /**
  * @name   UART device configuration
@@ -163,8 +167,10 @@ typedef struct {
     cc2538_uart_t *dev;       /**< pointer to the used UART device */
     gpio_t rx_pin;            /**< pin used for RX */
     gpio_t tx_pin;            /**< pin used for TX */
+#ifdef MODULE_PERIPH_UART_HW_FC
     gpio_t cts_pin;           /**< CTS pin - set to GPIO_UNDEF when not using */
     gpio_t rts_pin;           /**< RTS pin - set to GPIO_UNDEF when not using */
+#endif
 } uart_conf_t;
 /** @} */
 
@@ -206,7 +212,6 @@ typedef enum {
    UART_STOP_BITS_2 = UART_LCRH_STP2,     /**< 2 stop bits */
 } uart_stop_bits_t;
 /** @} */
-#endif /* DOXYGEN */
 
 /**
  * @name   Override SPI mode settings
@@ -234,6 +239,7 @@ typedef enum {
     SPI_CLK_10MHZ  = 4      /**< drive the SPI bus with 10MHz */
 } spi_clk_t;
 /** @} */
+#endif /* ndef DOXYGEN */
 
 /**
  * @brief   Datafields for static SPI clock configuration values
@@ -284,6 +290,7 @@ typedef struct {
     uint_fast8_t cfg;   /**< timer config word */
 } timer_conf_t;
 
+#ifndef DOXYGEN
 /**
  * @name   Override resolution options
  * @{
@@ -300,6 +307,7 @@ typedef enum {
     ADC_RES_16BIT =             (0xd00),    /**< not supported by hardware */
 } adc_res_t;
 /** @} */
+#endif /* ndef DOXYGEN */
 
 /**
  * @brief ADC configuration wrapper
@@ -324,6 +332,25 @@ typedef gpio_t adc_conf_t;
 #define SOCADC_9_BIT_RSHIFT     (7U) /**< Mask for getting data( 9 bits ENOB) */
 #define SOCADC_10_BIT_RSHIFT    (6U) /**< Mask for getting data(10 bits ENOB) */
 #define SOCADC_12_BIT_RSHIFT    (4U) /**< Mask for getting data(12 bits ENOB) */
+/** @} */
+
+/**
+ * @name RTT configuration
+ * @{
+ */
+#define RTT_DEV             SMWDTHROSC
+#define RTT_IRQ             SM_TIMER_ALT_IRQn
+#define RTT_IRQ_PRIO        1
+#define RTT_ISR             isr_sleepmode
+#define RTT_MAX_VALUE       (0xffffffff)
+#define RTT_FREQUENCY       (CLOCK_OSC32K)
+/** @} */
+
+/**
+ * @name Radio peripheral configuration
+ * @{
+ */
+#define RADIO_IRQ_PRIO      1
 /** @} */
 
 #ifdef __cplusplus

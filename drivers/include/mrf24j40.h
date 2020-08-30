@@ -116,14 +116,35 @@ extern "C" {
 #define MRF24J40_MAX_FRAME_RETRIES      (3U)        /**< Number of frame retries (fixed) */
 
 /**
+ * @defgroup drivers_mrf24j40_config     mrf24j40 driver compile configuration
+ * @ingroup drivers_mrf24j40
+ * @ingroup config_drivers_netdev
+ * @{
+ */
+
+/**
  * @brief Enable external PA/LNA control
  *
- * Increase RSSI for MRF24J40MC/MD/ME devices. No effect on MRF24J40MA.
- * For more information, please refer to section 4.2 of MRF24J40 datasheet.
+ * Set to 1 to increase RSSI for MRF24J40MC/MD/ME devices. No effect on
+ * MRF24J40MA. For more information, please refer to section 4.2 of MRF24J40
+ * datasheet.
  */
-#ifndef MRF24J40_USE_EXT_PA_LNA
-#define MRF24J40_USE_EXT_PA_LNA         (0U)
+#if defined(DOXYGEN)
+#define CONFIG_MRF24J40_USE_EXT_PA_LNA
 #endif
+
+/**
+ * @brief Enable basic self-test on init
+ *
+ * Perform a write / read to a known register on startup to detect
+ * if the device is connected.
+ * Set this to 1 if you want the boot not to hang if the device is
+ * not connected / there are SPI errors.
+ */
+#if defined(DOXYGEN)
+#define CONFIG_MRF24J40_TEST_SPI_CONNECTION
+#endif
+/** @} */
 
 /**
  * @brief   struct holding all params needed for device initialization
@@ -165,8 +186,10 @@ void mrf24j40_setup(mrf24j40_t *dev, const mrf24j40_params_t *params);
  * @brief   Trigger a hardware reset and configure radio with default values
  *
  * @param[in] dev           device to reset
+ *
+ * @return                  0 on success, error otherwise
  */
-void mrf24j40_reset(mrf24j40_t *dev);
+int mrf24j40_reset(mrf24j40_t *dev);
 
 /**
  * @brief   Trigger a clear channel assessment & retrieve RSSI
@@ -336,6 +359,27 @@ void mrf24j40_set_option(mrf24j40_t *dev, uint16_t option, bool state);
  * @param[in] state         the targeted new state
  */
 void mrf24j40_set_state(mrf24j40_t *dev, uint8_t state);
+
+/**
+ * @brief   Enable or disable proprietary Turbo Mode.
+ *
+ * Turbo mode is only compatible with other mrf24j40 chips.
+ *
+ * turbo off:   250 kbit/s (IEEE mode)
+ * turbo  on:   625 kbit/s
+ *
+ * @param[in] dev           device to change state of
+ * @param[in] enable        turbo mode control
+ */
+void mrf24j40_set_turbo(mrf24j40_t *dev, bool enable);
+
+/**
+ * @brief   Query the state of the turbo mode
+ *
+ * @param[in] dev           device to query
+ * @return                  true if Turbo Mode is enabled
+ */
+bool mrf24j40_get_turbo(mrf24j40_t *dev);
 
 /**
  * @brief   Put in sleep mode

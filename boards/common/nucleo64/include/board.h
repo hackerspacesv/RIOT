@@ -54,7 +54,7 @@ extern "C" {
  * @{
  */
 #define BTN0_PIN            GPIO_PIN(PORT_C, 13)
-#ifdef CPU_MODEL_STM32L433RC
+#if defined(CPU_MODEL_STM32L433RC) || defined(CPU_MODEL_STM32G474RE)
 #define BTN0_MODE           GPIO_IN_PD
 #else
 #define BTN0_MODE           GPIO_IN_PU
@@ -89,7 +89,7 @@ static const motor_driver_config_t motor_driver_config[] = {
     },
 };
 
-#define MOTOR_DRIVER_NUMOF           (sizeof(motor_driver_config) / sizeof(motor_driver_config[0]))
+#define MOTOR_DRIVER_NUMOF           ARRAY_SIZE(motor_driver_config)
 /** @} */
 
 #ifdef __cplusplus

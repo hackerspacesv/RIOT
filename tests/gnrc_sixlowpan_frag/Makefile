@@ -1,20 +1,16 @@
 include ../Makefile.tests_common
 
-BOARD_INSUFFICIENT_MEMORY := arduino-duemilanove arduino-leonardo arduino-nano \
-                             arduino-uno nucleo-f031k6
-
 USEMODULE += gnrc_sixlowpan_frag
 USEMODULE += embunit
 
 # GNRC modules should not be initialized unless we want to
-DISABLE_MODULE += auto_init
+DISABLE_MODULE += auto_init_gnrc_%
 
 # we don't need all this packet buffer space so reduce it a little
-CFLAGS += -DTEST_SUITES -DGNRC_PKTBUF_SIZE=2048
-
-# to be able to include gnrc_sixlowpan_frag-internal `rbuf.h`
-INCLUDES += -I$(RIOTBASE)/sys/net/gnrc/network_layer/sixlowpan/frag/
-
-TEST_ON_CI_WHITELIST += all
+CFLAGS += -DTEST_SUITES
+# Set GNRC_PKTBUF_SIZE via CFLAGS if not being set via Kconfig.
+ifndef CONFIG_GNRC_PKTBUF_SIZE
+  CFLAGS += -DCONFIG_GNRC_PKTBUF_SIZE=2048
+endif
 
 include $(RIOTBASE)/Makefile.include

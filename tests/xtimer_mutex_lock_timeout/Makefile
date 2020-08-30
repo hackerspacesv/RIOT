@@ -3,6 +3,8 @@ include ../Makefile.tests_common
 USEMODULE += xtimer
 USEMODULE += shell
 
-TEST_ON_CI_WHITELIST += all
+#for testing
+#USEMODULE += ps
+#USEMODULE += shell_commands
 
 include $(RIOTBASE)/Makefile.include

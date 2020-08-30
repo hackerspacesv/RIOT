@@ -19,7 +19,9 @@ BOARD_WHITELIST += arduino-mkr1000
 BOARD_WHITELIST += arduino-mkrfox1200
 BOARD_WHITELIST += arduino-mkrzero
 BOARD_WHITELIST += blackpill
+BOARD_WHITELIST += blackpill-128kib
 BOARD_WHITELIST += bluepill
+BOARD_WHITELIST += bluepill-128kib
 BOARD_WHITELIST += feather-m0
 BOARD_WHITELIST += opencm904
 BOARD_WHITELIST += spark-core
@@ -63,7 +65,7 @@ _test-elffile-overflow-runtest: $(BINFILE)
 
 # Test `ROM_OFFSET` is removed from firmware rom length if the board defines it
 test-elffile-fw_rom_length: $(ELFFILE)
-	$(Q)echo -n "Test rom offset substracted from rom length in elffile: "
+	$(Q)echo -n "Test rom offset subtracted from rom length in elffile: "
 	$(Q)\
 	if test -n "$(ROM_OFFSET)"; then \
 	  TEST_FW_LEN=$$($(PREFIX)readelf --symbols $^ 2>/dev/null | awk '/_fw_rom_length/{printf "0x%s\n", $$2}'); \

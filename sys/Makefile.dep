@@ -1,5 +1,17 @@
+ifneq (,$(filter arduino,$(USEMODULE)))
+  FEATURES_OPTIONAL += periph_i2c
+  FEATURES_OPTIONAL += periph_spi
+  FEATURES_REQUIRED += periph_uart
+  SKETCH_MODULE ?= arduino_sketches
+  USEMODULE += $(SKETCH_MODULE)
+endif
+
 ifneq (,$(filter eepreg,$(USEMODULE)))
   FEATURES_REQUIRED += periph_eeprom
+endif
+
+ifneq (,$(filter fmt_table,$(USEMODULE)))
+  USEMODULE += fmt
 endif
 
 ifneq (,$(filter i2c_scan,$(USEMODULE)))
@@ -7,5 +19,30 @@ ifneq (,$(filter i2c_scan,$(USEMODULE)))
 endif
 
 ifneq (,$(filter prng_fortuna,$(USEMODULE)))
-  CFLAGS += -DCRYPTO_AES
+  USEMODULE += crypto_aes
 endif
+
+ifneq (,$(filter crypto_aes_%,$(USEMODULE)))
+  USEMODULE += crypto_aes
+endif
+
+ifneq (,$(filter crypto_%,$(USEMODULE)))
+  USEMODULE += crypto
+endif
+
+ifneq (,$(filter rtt_cmd,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_rtt
+endif
+
+ifneq (,$(filter trace,$(USEMODULE)))
+  USEMODULE += xtimer
+endif
+
+ifneq (,$(filter shell_commands,$(USEMODULE)))
+  ifneq (,$(filter dfplayer,$(USEMODULE)))
+    USEMODULE += auto_init_multimedia
+    USEMODULE += fmt
+  endif
+endif
+
+include $(RIOTBASE)/sys/test_utils/Makefile.dep

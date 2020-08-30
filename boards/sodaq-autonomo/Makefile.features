@@ -1,11 +1,8 @@
-# Put defined MCU peripherals here (in alphabetical order)
-FEATURES_PROVIDED += periph_i2c
-FEATURES_PROVIDED += periph_pwm
-FEATURES_PROVIDED += periph_rtc
-FEATURES_PROVIDED += periph_rtt
-FEATURES_PROVIDED += periph_spi
-FEATURES_PROVIDED += periph_timer
-FEATURES_PROVIDED += periph_uart
-FEATURES_PROVIDED += periph_usbdev
+CPU_MODEL = samd21j18a
 
-include $(RIOTCPU)/samd21/Makefile.features
+FEATURES_PROVIDED += periph_pwm
+
+# Various other features (if any)
+FEATURES_PROVIDED += arduino_pwm
+
+include $(RIOTBOARD)/common/sodaq/Makefile.features

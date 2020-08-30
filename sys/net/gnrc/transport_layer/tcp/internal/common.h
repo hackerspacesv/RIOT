@@ -7,9 +7,7 @@
  */
 
 /**
- * @defgroup    net_gnrc_tcp TCP
- * @ingroup     net_gnrc
- * @brief       RIOT's TCP implementation for the GNRC network stack.
+ * @ingroup     net_gnrc_tcp
  *
  * @{
  *
@@ -48,16 +46,14 @@ extern "C" {
 #define STATUS_PASSIVE        (1 << 0)
 #define STATUS_ALLOW_ANY_ADDR (1 << 1)
 #define STATUS_NOTIFY_USER    (1 << 2)
-#define STATUS_WAIT_FOR_MSG   (1 << 3)
 /** @} */
 
 /**
  * @brief Defines for "eventloop" thread settings.
  * @{
  */
-#define TCP_EVENTLOOP_MSG_QUEUE_SIZE (8U)
-#define TCP_EVENTLOOP_PRIO           (THREAD_PRIORITY_MAIN - 2U)
-#define TCP_EVENTLOOP_STACK_SIZE     (THREAD_STACKSIZE_DEFAULT)
+#define TCP_EVENTLOOP_PRIO       (THREAD_PRIORITY_MAIN - 2U)
+#define TCP_EVENTLOOP_STACK_SIZE (THREAD_STACKSIZE_DEFAULT)
 /** @} */
 
 /**
@@ -97,7 +93,7 @@ extern "C" {
 #define RTO_UNINITIALIZED (-1)
 
 /**
- * @brief Overflow tolerant comparision operators for sequence and
+ * @brief Overflow tolerant comparison operators for sequence and
           acknowledgement number comparison.
  * @{
  */

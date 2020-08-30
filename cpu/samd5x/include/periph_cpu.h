@@ -22,6 +22,7 @@
 
 #include <limits.h>
 
+#include "macros/units.h"
 #include "periph_cpu_common.h"
 
 #ifdef __cplusplus
@@ -29,31 +30,51 @@ extern "C" {
 #endif
 
 /**
- * @brief   Mapping of pins to EXTI lines, -1 means not EXTI possible
+ * @brief   DFLL runs at at fixed frequency of 48 MHz
  */
-static const int8_t exti_config[4][32] = {
-#ifdef CPU_MODEL_SAMD51J20A
-    { 0,  1,  2,  3,  4,  5,  6,  7, -1,  9, 10, 11, 12, 13, 14, 15,
-      0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, 11, -1, -1, 14, 15 },
-    { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
-      0,  1, -1, -1, -1, -1,  6,  7, -1, -1, -1, -1, -1, -1, 14, 15 },
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 },
-#elif CPU_MODEL_SAME54P20A
-    { 0,  1,  2,  3,  4,  5,  6,  7, -1,  9, 10, 11, 12, 13, 14, 15,
-      0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, 11, -1, -1, 14, 15 },
-    { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
-      0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 12, 13, 14, 15, 14, 15 },
-    { 0,  1,  2,  3,  4,  5,  6,  9, -1, -1, 10, 11, 12, 13, 14, 15,
-      0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, -1, 14, 15 },
-    { 0,  1, -1, -1, -1, -1, -1, -1,  3,  4,  5,  6,  7, -1, -1, -1,
-     -1, -1, -1, -1, 10, 11, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 }
-#else
-    #error Please define a proper CPU_MODEL.
-#endif
+#define SAM0_DFLL_FREQ_HZ       MHZ(48)
+
+/**
+￼ * @brief   XOSC is used to generate a fixed frequency of 48 MHz
+￼ */
+#define SAM0_XOSC_FREQ_HZ       (XOSC0_FREQUENCY ? XOSC0_FREQUENCY : XOSC1_FREQUENCY)
+
+/**
+ * @brief   DPLL must run with at least 96 MHz
+ */
+#define SAM0_DPLL_FREQ_MIN_HZ   MHZ(96)
+
+/**
+ * @brief   DPLL frequency must not exceed 200 MHz
+ */
+#define SAM0_DPLL_FREQ_MAX_HZ   MHZ(20)
+
+/**
+ * @name    Power mode configuration
+ * @{
+ */
+#define PM_NUM_MODES        (3)
+/** @} */
+
+/**
+ * @name   SAMD5x GCLK definitions
+ * @{
+ */
+enum {
+    SAM0_GCLK_MAIN = 0,                 /**< 120 MHz main clock       */
+    SAM0_GCLK_32KHZ,                    /**< 32 kHz clock             */
+    SAM0_GCLK_TIMER,                    /**< 4-8 MHz clock for xTimer */
+    SAM0_GCLK_PERIPH,                   /**< 12-48 MHz (DFLL) clock   */
 };
+/** @} */
+
+/**
+ * @name   GCLK compatibility definitions
+ * @{
+ */
+#define SAM0_GCLK_8MHZ      SAM0_GCLK_TIMER
+#define SAM0_GCLK_48MHZ     SAM0_GCLK_PERIPH
+/** @} */
 
 /**
  * @brief   Override SPI hardware chip select macro
@@ -61,6 +82,26 @@ static const int8_t exti_config[4][32] = {
  * As of now, we do not support HW CS, so we always set it to a fixed value
  */
 #define SPI_HWCS(x)     (UINT_MAX - 1)
+
+/**
+ * @brief   The MCU has a 12 bit DAC
+ */
+#define DAC_RES_BITS        (12)
+
+/**
+ * @brief   The MCU has two DAC outputs.
+ */
+#define DAC_NUMOF           (2)
+
+/**
+ * @name    Real time counter configuration
+ * @{
+ */
+#define RTT_MAX_VALUE       (0xffffffff)
+#define RTT_CLOCK_FREQUENCY (32768U)                      /* in Hz */
+#define RTT_MIN_FREQUENCY   (RTT_CLOCK_FREQUENCY / 1024U) /* in Hz */
+#define RTT_MAX_FREQUENCY   (RTT_CLOCK_FREQUENCY)         /* in Hz */
+/** @} */
 
 #ifdef __cplusplus
 }

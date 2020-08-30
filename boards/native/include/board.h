@@ -141,7 +141,7 @@ void native_motor_driver_qdec_simulation( \
     int32_t pwm_duty_cycle);
 
 /* C++ standard do not support designated initializers */
-#ifndef __cplusplus
+#if !(defined __cplusplus) && (defined MODULE_PERIPH_QDEC)
 
 /**
  * @name Describe DC motors with PWM channel and GPIOs
@@ -180,7 +180,17 @@ static const motor_driver_config_t motor_driver_config[] = {
     },
 };
 
-#define MOTOR_DRIVER_NUMOF           (sizeof(motor_driver_config) / sizeof(motor_driver_config[0]))
+#define MOTOR_DRIVER_NUMOF           ARRAY_SIZE(motor_driver_config)
+/** @} */
+
+/**
+ * @name    ztimer configuration
+ * @{
+ */
+#define CONFIG_ZTIMER_USEC_TYPE    ZTIMER_TYPE_PERIPH_TIMER
+#define CONFIG_ZTIMER_USEC_DEV     TIMER_DEV(0)
+/* on native, anything can happen... */
+#define CONFIG_ZTIMER_USEC_MIN     (64)
 /** @} */
 
 #endif /* __cplusplus */

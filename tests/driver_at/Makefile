@@ -1,10 +1,10 @@
 include ../Makefile.tests_common
 
-BOARD_INSUFFICIENT_MEMORY := arduino-duemilanove arduino-leonardo arduino-nano \
-                             arduino-uno nucleo-f031k6
-
 USEMODULE += shell
 USEMODULE += at
-USEMODULE += at_urc
+USEMODULE += at_urc_isr_medium
+
+# we are printing from the event thread, we need more stack
+CFLAGS += -DEVENT_THREAD_MEDIUM_STACKSIZE=1024
 
 include $(RIOTBASE)/Makefile.include

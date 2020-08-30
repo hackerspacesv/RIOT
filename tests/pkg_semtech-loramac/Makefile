@@ -2,16 +2,11 @@ BOARD ?= b-l072z-lrwan1
 
 include ../Makefile.tests_common
 
-BOARD_INSUFFICIENT_MEMORY := arduino-duemilanove arduino-leonardo arduino-nano \
-                             arduino-uno nucleo-f031k6 nucleo-f042k6 \
-                             nucleo-l031k6
-
-BOARD_BLACKLIST := msb-430 msb-430h pic32-clicker pic32-wifire \
-                   telosb wsn430-v1_3b wsn430-v1_4 z1
-
-# waspmote-pro doesn't have enough RAM to support another thread dedicated to
-# RX messages
-BOARD_WITHOUT_LORAMAC_RX := waspmote-pro
+BOARD_WITHOUT_LORAMAC_RX := \
+    arduino-mega2560 \
+    i-nucleo-lrwan1 \
+    stm32f0discovery \
+    waspmote-pro \
 
 LORA_DRIVER ?= sx1276
 LORA_REGION ?= EU868
@@ -30,5 +25,16 @@ USEMODULE += shell_commands
 USEMODULE += fmt
 
 FEATURES_OPTIONAL += periph_eeprom
+
+# Default IotLab Config to run the test
+ifneq (,$(filter iotlab%,$(MAKECMDGOALS)))
+  IOTLAB_NODES ?= 1
+  IOTLAB_TYPE  ?= st-lrwan1:sx1276
+  IOTLAB_SITE  ?= saclay
+  include $(RIOTBASE)/dist/testbed-support/Makefile.iotlab
+endif
+
+# Can't be run on ci since it requires gateway + lora node
+TEST_ON_CI_BLACKLIST = all
 
 include $(RIOTBASE)/Makefile.include

@@ -40,11 +40,15 @@ void mrf24j40_setup(mrf24j40_t *dev, const mrf24j40_params_t *params)
     dev->params = *params;
 }
 
-void mrf24j40_reset(mrf24j40_t *dev)
+int mrf24j40_reset(mrf24j40_t *dev)
 {
     eui64_t addr_long;
 
-    mrf24j40_init(dev);
+    int res = mrf24j40_init(dev);
+
+    if (res < 0) {
+        return res;
+    }
 
     netdev_ieee802154_reset(&dev->netdev);
 
@@ -56,7 +60,7 @@ void mrf24j40_reset(mrf24j40_t *dev)
     mrf24j40_set_addr_long(dev, ntohll(addr_long.uint64.u64));
     mrf24j40_set_addr_short(dev, ntohs(addr_long.uint16[0].u16));
 
-    mrf24j40_set_chan(dev, IEEE802154_DEFAULT_CHANNEL);
+    mrf24j40_set_chan(dev, CONFIG_IEEE802154_DEFAULT_CHANNEL);
 
     /* configure Immediate Sleep and Wake-Up mode */
     mrf24j40_reg_write_short(dev, MRF24J40_REG_WAKECON, MRF24J40_WAKECON_IMMWAKE);
@@ -72,6 +76,8 @@ void mrf24j40_reset(mrf24j40_t *dev)
     dev->state = 0;
     mrf24j40_set_state(dev, MRF24J40_PSEUDO_STATE_IDLE);
     DEBUG("mrf24j40_reset(): reset complete.\n");
+
+    return 0;
 }
 
 bool mrf24j40_cca(mrf24j40_t *dev, int8_t *rssi)
@@ -83,7 +89,7 @@ bool mrf24j40_cca(mrf24j40_t *dev, int8_t *rssi)
     mrf24j40_assert_awake(dev);
     mrf24j40_enable_lna(dev);
 
-    /* trigger CCA measurment */
+    /* trigger CCA measurement */
     /* take a look onto datasheet chapter 3.6.1 */
     mrf24j40_reg_write_short(dev, MRF24J40_REG_BBREG6, MRF24J40_BBREG6_RSSIMODE1);
     /* wait for result to be ready */

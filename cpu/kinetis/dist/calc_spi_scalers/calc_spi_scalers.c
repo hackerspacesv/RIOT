@@ -28,6 +28,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define ARRAY_SIZE(a) (sizeof((a)) / sizeof((a)[0]))
+
 /**
  * @brief Targeted SPI bus speed values (pre-defined by RIOT)
  */
@@ -195,7 +197,7 @@ int main(int argc, char **argv)
 
     puts("static const uint32_t spi_clk_config[] = {");
 
-    for (i = 0; i < (sizeof(targets) / sizeof(targets[0])); i++) {
+    for (i = 0; i < ARRAY_SIZE(targets); i++) {
         uint8_t tmp, ptmp;
         long res;
         /* bus clock */
@@ -229,7 +231,7 @@ int main(int argc, char **argv)
         }
         printf("        SPI_CTAR_PDT(%i) | SPI_CTAR_DT(%i)\n", (int)ptmp, (int)tmp);
 
-        if (i == (sizeof(targets) / sizeof(targets[0])) - 1) {
+        if (i == ARRAY_SIZE(targets) - 1) {
             puts("    )");
         }
         else {

@@ -7,8 +7,6 @@ BOARD ?= b-l072z-lrwan1
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
 
-BOARD_INSUFFICIENT_MEMORY := nucleo-f031k6 nucleo-f042k6 nucleo-l031k6
-
 DEVEUI ?= 0000000000000000
 APPEUI ?= 0000000000000000
 APPKEY ?= 00000000000000000000000000000000
@@ -35,5 +33,20 @@ DEVELHELP ?= 1
 
 # Change this to 0 show compiler invocation lines by default:
 QUIET ?= 1
+
+# Default IotLab Config to run the test
+ifneq (,$(filter iotlab%,$(MAKECMDGOALS)))
+  IOTLAB_NODES ?= 1
+  IOTLAB_TYPE  ?= st-lrwan1:sx1276
+  IOTLAB_SITE  ?= saclay
+  include $(RIOTBASE)/dist/testbed-support/Makefile.iotlab
+endif
+
+ifneq (,$(filter test,$(MAKECMDGOALS)))
+  DEFAULT_MODULE += test_utils_interactive_sync
+endif
+
+# Can't be run on ci since it requires gateway + lora node
+TEST_ON_CI_BLACKLIST = all
 
 include $(RIOTBASE)/Makefile.include

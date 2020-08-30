@@ -18,6 +18,15 @@ extern "C" {
 /** @} */
 
 /**
+ * @name    ztimer configuration
+ * @{
+ */
+#define CONFIG_ZTIMER_USEC_TYPE    ZTIMER_TYPE_PERIPH_TIMER
+#define CONFIG_ZTIMER_USEC_DEV     TIMER_DEV(1)
+#define CONFIG_ZTIMER_USEC_MIN     (8)
+/** @} */
+
+/**
  * @name    AT86RF233 configuration
  *
  * {spi bus, spi speed, cs pin, int pin, reset pin, sleep pin}
@@ -49,8 +58,8 @@ void board_init(void);
 #define HSSV_ATSAMR21_RX           GPIO_PIN(PA, 15)
 #define HSSV_ATSAMR21_TX           GPIO_PIN(PA, 14)
 #define HSSV_ATSAMR21_AREF         GPIO_PIN(PA, 4)
-#define HSSV_ATSAMR21_ADC2         GPIO_PIN(PA, 5)
-#define HSSV_ATSAMR21_ADC1         GPIO_PIN(PA, 6)
+#define HSSV_ATSAMR21_ADC2         GPIO_PIN(PA, 5)  /* ADC Channel 0 */
+#define HSSV_ATSAMR21_ADC1         GPIO_PIN(PA, 6)  /* ADC Channel 1 */
 //#define HSSV_ATSAMR21_SWCLK        GPIO_PIN(PA, 30)
 //#define HSSV_ATSAMR21_SWDIO        GPIO_PIN(PA, 31)
 #define HSSV_ATSAMR21_SCL          GPIO_PIN(PA, 23)

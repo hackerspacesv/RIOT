@@ -86,11 +86,9 @@ static const tc32_conf_t timer_config[] = {
         .pm_mask        = PM_APBCMASK_TC3,
         .gclk_ctrl      = GCLK_CLKCTRL_ID_TCC2_TC3,
 #if CLOCK_USE_PLL || CLOCK_USE_XOSC32_DFLL
-        .gclk_src       = GCLK_CLKCTRL_GEN(1),
-        .prescaler      = TC_CTRLA_PRESCALER_DIV1,
+        .gclk_src       = SAM0_GCLK_1MHZ,
 #else
-        .gclk_src       = GCLK_CLKCTRL_GEN(0),
-        .prescaler      = TC_CTRLA_PRESCALER_DIV8,
+        .gclk_src       = SAM0_GCLK_MAIN,
 #endif
         .flags          = TC_CTRLA_MODE_COUNT16,
     },
@@ -100,11 +98,9 @@ static const tc32_conf_t timer_config[] = {
         .pm_mask        = PM_APBCMASK_TC4 | PM_APBCMASK_TC5,
         .gclk_ctrl      = GCLK_CLKCTRL_ID_TC4_TC5,
 #if CLOCK_USE_PLL || CLOCK_USE_XOSC32_DFLL
-        .gclk_src       = GCLK_CLKCTRL_GEN(1),
-        .prescaler      = TC_CTRLA_PRESCALER_DIV1,
+        .gclk_src       = SAM0_GCLK_1MHZ,
 #else
-        .gclk_src       = GCLK_CLKCTRL_GEN(0),
-        .prescaler      = TC_CTRLA_PRESCALER_DIV8,
+        .gclk_src       = SAM0_GCLK_MAIN,
 #endif
         .flags          = TC_CTRLA_MODE_COUNT32,
     }
@@ -116,7 +112,7 @@ static const tc32_conf_t timer_config[] = {
 #define TIMER_0_ISR         isr_tc3
 #define TIMER_1_ISR         isr_tc4
 
-#define TIMER_NUMOF         (sizeof(timer_config) / sizeof(timer_config[0]))
+#define TIMER_NUMOF         ARRAY_SIZE(timer_config)
 /** @} */
 
 /**
@@ -125,24 +121,32 @@ static const tc32_conf_t timer_config[] = {
  */
 static const uart_conf_t uart_config[] = {
     {
-        .dev    = &SERCOM3->USART,
-        .rx_pin = GPIO_PIN(PA, 23),
-        .tx_pin = GPIO_PIN(PA, 22),
-        .mux    = GPIO_MUX_C,
-        .rx_pad = UART_PAD_RX_1,
-        .tx_pad = UART_PAD_TX_0,
-        .flags  = UART_FLAG_NONE,
-        .gclk_src = GCLK_CLKCTRL_GEN_GCLK0,
+        .dev      = &SERCOM3->USART,
+        .rx_pin   = GPIO_PIN(PA, 23),
+        .tx_pin   = GPIO_PIN(PA, 22),
+#ifdef MODULE_PERIPH_UART_HW_FC
+        .rts_pin  = GPIO_UNDEF,
+        .cts_pin  = GPIO_UNDEF,
+#endif
+        .mux      = GPIO_MUX_C,
+        .rx_pad   = UART_PAD_RX_1,
+        .tx_pad   = UART_PAD_TX_0,
+        .flags    = UART_FLAG_NONE,
+        .gclk_src = SAM0_GCLK_MAIN,
     },
     {
-        .dev    = &SERCOM4->USART,
-        .rx_pin = GPIO_PIN(PB, 9),
-        .tx_pin = GPIO_PIN(PB, 8),
-        .mux    = GPIO_MUX_D,
-        .rx_pad = UART_PAD_RX_1,
-        .tx_pad = UART_PAD_TX_0,
-        .flags  = UART_FLAG_NONE,
-        .gclk_src = GCLK_CLKCTRL_GEN_GCLK0,
+        .dev      = &SERCOM4->USART,
+        .rx_pin   = GPIO_PIN(PB, 9),
+        .tx_pin   = GPIO_PIN(PB, 8),
+#ifdef MODULE_PERIPH_UART_HW_FC
+        .rts_pin  = GPIO_UNDEF,
+        .cts_pin  = GPIO_UNDEF,
+#endif
+        .mux      = GPIO_MUX_D,
+        .rx_pad   = UART_PAD_RX_1,
+        .tx_pad   = UART_PAD_TX_0,
+        .flags    = UART_FLAG_NONE,
+        .gclk_src = SAM0_GCLK_MAIN,
     }
 };
 
@@ -150,7 +154,7 @@ static const uart_conf_t uart_config[] = {
 #define UART_0_ISR          isr_sercom3
 #define UART_1_ISR          isr_sercom4
 
-#define UART_NUMOF          (sizeof(uart_config) / sizeof(uart_config[0]))
+#define UART_NUMOF          ARRAY_SIZE(uart_config)
 /** @} */
 
 /**
@@ -167,11 +171,16 @@ static const spi_conf_t spi_config[] = {
         .mosi_mux = GPIO_MUX_C,
         .clk_mux  = GPIO_MUX_C,
         .miso_pad = SPI_PAD_MISO_3,
-        .mosi_pad = SPI_PAD_MOSI_0_SCK_1
+        .mosi_pad = SPI_PAD_MOSI_0_SCK_1,
+        .gclk_src = SAM0_GCLK_MAIN,
+#ifdef MODULE_PERIPH_DMA
+        .tx_trigger = SERCOM1_DMAC_ID_TX,
+        .rx_trigger = SERCOM1_DMAC_ID_RX,
+#endif
     }
 };
 
-#define SPI_NUMOF           (sizeof(spi_config) / sizeof(spi_config[0]))
+#define SPI_NUMOF           ARRAY_SIZE(spi_config)
 
 /**
  * @name    I2C configuration
@@ -184,7 +193,7 @@ static const i2c_conf_t i2c_config[] = {
         .scl_pin  = GPIO_PIN(PA, 8),
         .sda_pin  = GPIO_PIN(PA, 9),
         .mux      = GPIO_MUX_C,
-        .gclk_src = GCLK_CLKCTRL_GEN_GCLK0,
+        .gclk_src = SAM0_GCLK_MAIN,
         .flags    = I2C_FLAG_NONE
     },
     {
@@ -193,38 +202,33 @@ static const i2c_conf_t i2c_config[] = {
         .scl_pin  = GPIO_PIN(PA, 12),
         .sda_pin  = GPIO_PIN(PA, 13),
         .mux      = GPIO_MUX_C,
-        .gclk_src = GCLK_CLKCTRL_GEN_GCLK0,
+        .gclk_src = SAM0_GCLK_MAIN,
         .flags    = I2C_FLAG_NONE
     }
 };
 
-#define I2C_NUMOF          (sizeof(i2c_config) / sizeof(i2c_config[0]))
+#define I2C_NUMOF          ARRAY_SIZE(i2c_config)
 
 /**
- * @name    RTC configuration
+ * @name RTT configuration
  * @{
  */
-#define RTC_NUMOF           (1U)
-#define RTC_DEV             RTC->MODE2
-
+#ifndef RTT_FREQUENCY
+#define RTT_FREQUENCY       (32768U)    /* in Hz. For changes see `rtc_rtt.c` */
+#endif
 /** @} */
 
 /**
  * @name    ADC configuration
  * @{
  */
-#define ADC_0_EN                           1
-/* ADC 0 device configuration */
-#define ADC_0_DEV                          ADC
-#define ADC_0_IRQ                          ADC_IRQn
 
-/* ADC 0 Default values */
-#define ADC_0_CLK_SOURCE                   0 /* GCLK_GENERATOR_0 */
-#define ADC_0_PRESCALER                    ADC_CTRLB_PRESCALER_DIV512
+/* ADC Default values */
+#define ADC_PRESCALER                       ADC_CTRLB_PRESCALER_DIV512
 
-#define ADC_0_NEG_INPUT                    ADC_INPUTCTRL_MUXNEG_GND
-#define ADC_0_GAIN_FACTOR_DEFAULT          ADC_INPUTCTRL_GAIN_1X
-#define ADC_0_REF_DEFAULT                  ADC_REFCTRL_REFSEL_INT1V
+#define ADC_NEG_INPUT                       ADC_INPUTCTRL_MUXNEG_GND
+#define ADC_GAIN_FACTOR_DEFAULT             ADC_INPUTCTRL_GAIN_1X
+#define ADC_REF_DEFAULT                     ADC_REFCTRL_REFSEL_INT1V
 
 /* Digital pins (1 to 6) on the board can be configured as analog inputs */
 static const adc_conf_chan_t adc_channels[] = {
@@ -237,8 +241,7 @@ static const adc_conf_chan_t adc_channels[] = {
     { GPIO_PIN(PA, 2), ADC_INPUTCTRL_MUXPOS_PIN0 },     /* Digital 6 */
 };
 
-#define ADC_0_CHANNELS                     (6U)
-#define ADC_NUMOF                          ADC_0_CHANNELS
+#define ADC_NUMOF                           ARRAY_SIZE(adc_channels)
 /** @} */
 
 /**
@@ -251,6 +254,7 @@ static const sam0_common_usb_config_t sam_usbdev_config[] = {
         .dp     = GPIO_PIN(PA, 25),
         .d_mux  = GPIO_MUX_G,
         .device = &USB->DEVICE,
+        .gclk_src = SAM0_GCLK_MAIN,
     }
 };
 /** @} */

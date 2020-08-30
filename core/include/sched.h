@@ -82,13 +82,12 @@
 
 #include <stddef.h>
 #include "kernel_defines.h"
-#include "bitarithm.h"
 #include "kernel_types.h"
 #include "native_sched.h"
 #include "clist.h"
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 /**
@@ -101,19 +100,20 @@ typedef struct _thread thread_t;
  * @{
  */
 typedef enum {
-    STATUS_STOPPED,                 /**< has terminated                       */
-    STATUS_SLEEPING,                /**< sleeping                             */
-    STATUS_MUTEX_BLOCKED,           /**< waiting for a locked mutex           */
-    STATUS_RECEIVE_BLOCKED,         /**< waiting for a message                */
-    STATUS_SEND_BLOCKED,            /**< waiting for message to be delivered  */
-    STATUS_REPLY_BLOCKED,           /**< waiting for a message response       */
-    STATUS_FLAG_BLOCKED_ANY,        /**< waiting for any flag from flag_mask  */
-    STATUS_FLAG_BLOCKED_ALL,        /**< waiting for all flags in flag_mask   */
-    STATUS_MBOX_BLOCKED,            /**< waiting for get/put on mbox          */
-    STATUS_COND_BLOCKED,            /**< waiting for a condition variable     */
-    STATUS_RUNNING,                 /**< currently running                    */
-    STATUS_PENDING,                 /**< waiting to be scheduled to run       */
-    STATUS_NUMOF                    /**< number of supported thread states    */
+    STATUS_STOPPED,                 /**< has terminated                           */
+    STATUS_ZOMBIE,                  /**< has terminated & keeps thread's thread_t */
+    STATUS_SLEEPING,                /**< sleeping                                 */
+    STATUS_MUTEX_BLOCKED,           /**< waiting for a locked mutex               */
+    STATUS_RECEIVE_BLOCKED,         /**< waiting for a message                    */
+    STATUS_SEND_BLOCKED,            /**< waiting for message to be delivered      */
+    STATUS_REPLY_BLOCKED,           /**< waiting for a message response           */
+    STATUS_FLAG_BLOCKED_ANY,        /**< waiting for any flag from flag_mask      */
+    STATUS_FLAG_BLOCKED_ALL,        /**< waiting for all flags in flag_mask       */
+    STATUS_MBOX_BLOCKED,            /**< waiting for get/put on mbox              */
+    STATUS_COND_BLOCKED,            /**< waiting for a condition variable         */
+    STATUS_RUNNING,                 /**< currently running                        */
+    STATUS_PENDING,                 /**< waiting to be scheduled to run           */
+    STATUS_NUMOF                    /**< number of supported thread states        */
 } thread_status_t;
 /** @} */
 
@@ -122,7 +122,7 @@ typedef enum {
  * @{
  */
 #define STATUS_ON_RUNQUEUE      STATUS_RUNNING  /**< to check if on run queue:
-                                                 `st >= STATUS_ON_RUNQUEUE`   */
+                                                   `st >= STATUS_ON_RUNQUEUE`   */
 #define STATUS_NOT_FOUND ((thread_status_t)-1)  /**< Describes an illegal thread status */
 /** @} */
 /**
@@ -149,7 +149,7 @@ int sched_run(void);
 void sched_set_status(thread_t *process, thread_status_t status);
 
 /**
- * @brief       Yield if approriate.
+ * @brief       Yield if appropriate.
  *
  * @details     Either yield if other_prio is higher than the current priority,
  *              or if the current thread is not on the runqueue.
@@ -203,29 +203,40 @@ extern clist_node_t sched_runqueues[SCHED_PRIO_LEVELS];
  */
 NORETURN void sched_task_exit(void);
 
-#ifdef MODULE_SCHEDSTATISTICS
 /**
- *  Scheduler statistics
- */
-typedef struct {
-    uint32_t laststart;      /**< Time stamp of the last time this thread was
-                                  scheduled to run */
-    unsigned int schedules;  /**< How often the thread was scheduled to run */
-    uint64_t runtime_ticks;  /**< The total runtime of this thread in ticks */
-} schedstat_t;
-
-/**
- *  Thread statistics table
- */
-extern schedstat_t sched_pidlist[KERNEL_PID_LAST + 1];
-
-/**
- *  @brief  Register a callback that will be called on every scheduler run
+ * @brief  Set CPU to idle mode (CPU dependent)
  *
- *  @param[in] callback The callback functions the will be called
+ * Only used when there's no idle thread.
+ *
+ * This function will be called by the scheduler when there's no runnable thread.
+ * It will be called from ISR context, and *must* allow other ISR handlers to be run.
+ * E.g., on Cortex-M, the PendSV priority is temporarily lowered (set to higher
+ * value) in order to enable other exceptions to be run.
+ *
+ * This function should also invoke setting a low power mode, e.g., by calling
+ * 'pm_set_lowest()'.
  */
-void sched_register_cb(void (*callback)(uint32_t, uint32_t));
-#endif /* MODULE_SCHEDSTATISTICS */
+void sched_arch_idle(void);
+
+#if IS_USED(MODULE_SCHED_CB) || defined(DOXYGEN)
+/**
+ * @brief   Scheduler run callback
+ *
+ * @note Both @p active and @p next can be KERNEL_PID_UNDEF, but not at the same
+ * time.
+ *
+ * @param   active      Pid of the active thread pid
+ * @param   next        Pid of the next scheduled thread
+ */
+typedef void (*sched_callback_t)(kernel_pid_t active, kernel_pid_t next);
+
+/**
+ * @brief  Register a callback that will be called on every scheduler run
+ *
+ * @param[in] callback The callback functions that will be called
+ */
+void sched_register_cb(sched_callback_t callback);
+#endif /* MODULE_SCHED_CB */
 
 #ifdef __cplusplus
 }

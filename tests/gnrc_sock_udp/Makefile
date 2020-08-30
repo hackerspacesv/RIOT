@@ -1,18 +1,14 @@
 include ../Makefile.tests_common
 
-BOARD_INSUFFICIENT_MEMORY := arduino-duemilanove arduino-leonardo \
-                             arduino-mega2560 arduino-nano \
-                             arduino-uno chronos nucleo-f031k6 nucleo-f042k6 \
-                             nucleo-l031k6 waspmote-pro
-
 USEMODULE += gnrc_sock_check_reuse
 USEMODULE += gnrc_sock_udp
 USEMODULE += gnrc_ipv6
 USEMODULE += ps
 
-CFLAGS += -DGNRC_PKTBUF_SIZE=400
+# Set GNRC_PKTBUF_SIZE via CFLAGS if not being set via Kconfig.
+ifndef CONFIG_GNRC_PKTBUF_SIZE
+  CFLAGS += -DCONFIG_GNRC_PKTBUF_SIZE=400
+endif
 CFLAGS += -DTEST_SUITES
-
-TEST_ON_CI_WHITELIST += all
 
 include $(RIOTBASE)/Makefile.include

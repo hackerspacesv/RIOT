@@ -24,6 +24,7 @@
 #include "xtimer.h"
 #include "mrf24j40_internal.h"
 #include "mrf24j40_registers.h"
+#include "kernel_defines.h"
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -36,7 +37,7 @@ static inline void getbus(mrf24j40_t *dev)
     spi_acquire(SPIDEV, CSPIN, SPI_MODE_0, dev->params.spi_clk);
 }
 
-#if MRF24J40_USE_EXT_PA_LNA
+#if IS_ACTIVE(CONFIG_MRF24J40_USE_EXT_PA_LNA)
 static inline void mrf24j40_reg_and_short(mrf24j40_t *dev, const uint8_t addr, uint8_t value)
 {
     value &= mrf24j40_reg_read_short(dev, addr);
@@ -96,31 +97,30 @@ void mrf24j40_enable_lna(mrf24j40_t *dev)
     mrf24j40_reg_and_short(dev, MRF24J40_REG_GPIO, ~(MRF24J40_GPIO_0 | MRF24J40_GPIO_1));
     mrf24j40_reg_or_short(dev, MRF24J40_REG_GPIO, MRF24J40_GPIO_2 | MRF24J40_GPIO_3);
 }
-#endif /* MRF24J40_USE_EXT_PA_LNA */
+#endif /* CONFIG_MRF24J40_USE_EXT_PA_LNA */
 
-void mrf24j40_init(mrf24j40_t *dev)
+int mrf24j40_init(mrf24j40_t *dev)
 {
-
-    mrf24j40_hardware_reset(dev);
-
-#if ENABLE_DEBUG
-    /* Check if MRF24J40 is available */
-    uint8_t txmcr = mrf24j40_reg_read_short(dev, MRF24J40_REG_TXMCR);
-    if ((txmcr == 0xFF) || (txmcr == 0x00)) {
-        /* Write default value to TXMCR register */
-        mrf24j40_reg_write_short(dev, MRF24J40_REG_TXMCR, MRF24J40_TXMCR_MACMINBE1 |
-                                                          MRF24J40_TXMCR_MACMINBE0 |
-                                                          MRF24J40_TXMCR_CSMABF2);
-        txmcr = mrf24j40_reg_read_short(dev, MRF24J40_REG_TXMCR);
-        if (txmcr != (MRF24J40_TXMCR_MACMINBE1 |
-                      MRF24J40_TXMCR_MACMINBE0 |
-                      MRF24J40_TXMCR_CSMABF2)) {
-            DEBUG("[mrf24j40] Initialization failure, SPI interface communication failed\n");
-            /* Return to prevents hangup later in the initialization */
-            return;
+    if (IS_ACTIVE(CONFIG_MRF24J40_TEST_SPI_CONNECTION)) {
+        /* Check if MRF24J40 is available */
+        uint8_t txmcr = mrf24j40_reg_read_short(dev, MRF24J40_REG_TXMCR);
+        if ((txmcr == 0xFF) || (txmcr == 0x00)) {
+            /* Write default value to TXMCR register */
+            mrf24j40_reg_write_short(dev, MRF24J40_REG_TXMCR, MRF24J40_TXMCR_MACMINBE1 |
+                                                            MRF24J40_TXMCR_MACMINBE0 |
+                                                            MRF24J40_TXMCR_CSMABF2);
+            txmcr = mrf24j40_reg_read_short(dev, MRF24J40_REG_TXMCR);
+            if (txmcr != (MRF24J40_TXMCR_MACMINBE1 |
+                        MRF24J40_TXMCR_MACMINBE0 |
+                        MRF24J40_TXMCR_CSMABF2)) {
+                DEBUG("[mrf24j40] Initialization failure, SPI interface communication failed\n");
+                /* Return to prevents hangup later in the initialization */
+                return -ENODEV;
+            }
         }
     }
-#endif
+
+    mrf24j40_hardware_reset(dev);
 
     /* do a soft reset */
     mrf24j40_reg_write_short(dev, MRF24J40_REG_SOFTRST, MRF24J40_SOFTRST_RSTPWR |
@@ -165,6 +165,8 @@ void mrf24j40_init(mrf24j40_t *dev)
 
     /* mrf24j40_set_interrupts */
     mrf24j40_reg_write_short(dev, MRF24J40_REG_INTCON, ~(MRF24J40_INTCON_RXIE | MRF24J40_INTCON_TXNIE));
+
+    return 0;
 }
 
 uint8_t mrf24j40_reg_read_short(mrf24j40_t *dev, const uint8_t addr)

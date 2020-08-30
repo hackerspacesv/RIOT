@@ -34,15 +34,16 @@ start_uhcpd() {
 }
 
 BORDER_IF=$1
-PREFIX=$2
+PREFIX=${2:-2001:db8::/64}
 UHCPD="$(readlink -f "../../dist/tools/uhcpd/bin")/uhcpd"
 
 [ -z "${BORDER_IF}" -o -z "${PREFIX}" ] && {
-    echo "usage: $0 <border-interface> <prefix>"
+    echo "usage: $0 usb_interface [ipv6_prefix]"
     exit 1
 }
 
 trap "cleanup" INT QUIT TERM EXIT
 
+echo "using prefix $PREFIX"
 
 configure_border_interface && start_uhcpd

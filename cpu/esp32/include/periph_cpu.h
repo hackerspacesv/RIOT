@@ -32,6 +32,22 @@ extern "C" {
 #define PROVIDES_PM_SET_LOWEST
 #define PROVIDES_PM_RESTART
 #define PROVIDES_PM_OFF
+#define PROVIDES_PM_LAYERED_OFF
+
+/**
+ * @brief   Number of usable low power modes
+ */
+#define PM_NUM_MODES            (2U)
+
+/**
+ * @name    Power modes
+ * @{
+ */
+#define ESP_PM_MODEM_SLEEP      (2U)
+#define ESP_PM_LIGHT_SLEEP      (1U)
+#define ESP_PM_DEEP_SLEEP       (0U)
+/** @} */
+
 /** @} */
 
 /**
@@ -82,6 +98,7 @@ typedef unsigned int gpio_t;
 #define GPIO_PIN_NUMOF      (40)
 /** @} */
 
+#ifndef DOXYGEN
 /**
  * @brief   Override mode flank selection values
  *
@@ -117,6 +134,7 @@ typedef enum {
     GPIO_IN_OD_PU   /**< input and open-drain output */
 } gpio_mode_t;
 /** @} */
+#endif /* ndef DOXYGEN */
 /** @} */
 
 /**
@@ -168,7 +186,7 @@ typedef enum {
  *
  * ESP32 integrates two 12-bit ADCs (ADC1 and ADC2) capable of measuring up to
  * 18 analog signals in total. Most of these ADC channels are either connected
- * to a number of intergrated sensors like a Hall sensors, touch sensors and a
+ * to a number of integrated sensors like a Hall sensors, touch sensors and a
  * temperature sensor or can be connected with certain GPIOs. Integrated
  * sensors are disabled in RIOT's implementation and are not accessible. Thus,
  * up to 18 GPIOs, the RTC GPIOs, can be used as ADC inputs:
@@ -207,7 +225,7 @@ typedef enum {
  * determines the mapping between the RIOT's ADC lines and the GPIOs.
  *
  * @note ADC_GPIOS must be defined even if there are no GPIOs that could be
- * used as ADC channels on the board. In this case, an empy list hast to be
+ * used as ADC channels on the board. In this case, an empty list hast to be
  * defined which just contains the curly braces.
  *
  * ADC_NUMOF is determined automatically from the ADC_GPIOS definition.
@@ -218,6 +236,8 @@ typedef enum {
  *
  * @{
  */
+
+#ifndef DOXYGEN
 /**
  * @brief   Possible ADC resolution settings
  */
@@ -233,9 +253,10 @@ typedef enum {
     ADC_RES_16BIT = 0xf3,   /**< ADC resolution: 16 bit is not supported */
 } adc_res_t;
 /** @} */
+#endif /* ndef DOXYGEN */
 
 /**
- * @brief  Number of ADC cahnnels that could be used at maximum
+ * @brief  Number of ADC channels that could be used at maximum
  *
  * @note GPIO37 and GPIO38 are usually not broken out on ESP32 modules and are
  * therefore not usable. The maximum number of ADC channels (ADC_NUMOF_MAX)
@@ -258,7 +279,7 @@ typedef enum {
  * determines the mapping between the RIOT's DAC lines and the GPIOs.
  *
  * @note DAC_GPIOS must be defined even if there are no GPIOs that could be
- * used as DAC channels on the board. In this case, an empy list hast to be
+ * used as DAC channels on the board. In this case, an empty list hast to be
  * defined which just contains the curly braces.
  *
  * DAC_NUMOF is determined automatically from the DAC_GPIOS definition.
@@ -270,7 +291,7 @@ typedef enum {
  */
 
 /**
- * @brief  Number of DAC cahnnels that could be used at maximum.
+ * @brief  Number of DAC channels that could be used at maximum.
  */
 #define DAC_NUMOF_MAX   2
 
@@ -282,7 +303,7 @@ typedef enum {
  * ESP32 has two built-in I2C interfaces.
  *
  * The board-specific configuration of the I2C interface I2C_DEV(n) requires
- * the defintion of
+ * the definition of
  *
  * I2Cn_SPEED, the bus speed,
  * I2Cn_SCL, the GPIO used as SCL signal, and
@@ -300,6 +321,7 @@ typedef enum {
  * @{
  */
 
+#ifndef DOXYGEN
 /**
  * @brief    Override I2C clock speed values
  *
@@ -315,6 +337,7 @@ typedef enum {
     I2C_SPEED_HIGH,         /**< not supported */
 } i2c_speed_t;
 /** @} */
+#endif /* ndef DOXYGEN */
 
 /**
  * @brief   I2C configuration structure type
@@ -325,6 +348,11 @@ typedef struct {
     gpio_t sda;             /**< GPIO used as SDA pin */
 } i2c_conf_t;
 
+/**
+ * @brief   Maximum number of I2C interfaces that can be used by board definitions
+ */
+#define I2C_NUMOF_MAX   (2)
+
 #define PERIPH_I2C_NEED_READ_REG    /**< i2c_read_reg required */
 #define PERIPH_I2C_NEED_READ_REGS   /**< i2c_read_regs required */
 #define PERIPH_I2C_NEED_WRITE_REG   /**< i2c_write_reg required */
@@ -333,7 +361,6 @@ typedef struct {
 
 /**
  * @name   PWM configuration
- * @{
  *
  * PWM implementation uses ESP32's high-speed MCPWM modules. ESP32 has 2 such
  * modules, each with up to 6 channels (PWM_CHANNEL_NUM_DEV_MAX). Thus, the
@@ -355,6 +382,8 @@ typedef struct {
  * @note As long as the GPIOs listed in PWM0_GPIOS and PMW1_GPIOS are not
  * initialized as PWM channels with the *pwm_init* function, they can be used
  * other purposes.
+ *
+ * @{
  */
 
 /**
@@ -366,6 +395,38 @@ typedef struct {
  * @brief   Maximum number of channels per PWM device.
  */
 #define PWM_CHANNEL_NUM_DEV_MAX (6)
+
+/** @} */
+
+/**
+ * @name    RNG configuration
+ * @{
+ */
+
+/**
+ * @brief   The address of the register for accessing the hardware RNG.
+ */
+#define RNG_DATA_REG_ADDR   (0x3ff75144)
+/** @} */
+
+/**
+ * @name    RTT and RTC configuration
+ * @{
+ */
+
+/**
+ * @brief   RTT frequency definition
+ *
+ * The RTT frequency is always 32.768 kHz even if no external crystal is
+ * connected. In this case the RTT value counted with the internal 150 kHz
+ * RC oscillator is converted to a value for an RTT with 32.768 kHz.
+ */
+#define RTT_FREQUENCY       (32768UL)
+
+/**
+ * @brief   RTT is a 32-bit counter
+ */
+#define RTT_MAX_VALUE       (0xFFFFFFFFUL)
 
 /** @} */
 
@@ -388,7 +449,7 @@ typedef struct {
  * device driver doesn't support it.
  *
  * The board-specific configuration of the SPI interface SPI_DEV(n) requires
- * the defintion of
+ * the definition of
  *
  * - SPIn_CTRL, the SPI controller which is used for the interface (VSPI or HSPI),
  * - SPIn_SCK, the GPIO used as clock signal
@@ -402,6 +463,8 @@ typedef struct {
  *
  * SPI_NUMOF is determined automatically from the board-specific peripheral
  * definitions of SPIn_*.
+ *
+ * @{
  */
 
 /**
@@ -423,6 +486,11 @@ typedef struct {
     gpio_t cs;              /**< GPIO used as CS0 pin */
 } spi_conf_t;
 
+/**
+ * @brief   Maximum number of SPI interfaces that can be used by board definitions
+ */
+#define SPI_NUMOF_MAX   2
+
 #define PERIPH_SPI_NEEDS_TRANSFER_BYTE  /**< requires function spi_transfer_byte */
 #define PERIPH_SPI_NEEDS_TRANSFER_REG   /**< requires function spi_transfer_reg */
 #define PERIPH_SPI_NEEDS_TRANSFER_REGS  /**< requires function spi_transfer_regs */
@@ -438,18 +506,23 @@ typedef struct {
  */
 #ifdef MODULE_ESP_HW_COUNTER
 /** hardware ccount/ccompare registers are used for timer implementation */
-#define TIMER_NUMOF     (2)
-#define TIMER_CHANNELS  (1)
+#define TIMER_NUMOF         (2)
+#define TIMER_CHANNEL_NUMOF (1)
 #else
 /** hardware timer modules are used for timer implementation (default) */
-#define TIMER_NUMOF     (3)
-#define TIMER_CHANNELS  (1)
+#define TIMER_NUMOF         (3)
+#define TIMER_CHANNEL_NUMOF (1)
 #endif
 
 /** Timer used for system time */
 #define TIMER_SYSTEM    TIMERG0.hw_timer[0]
 
 /** @} */
+
+/**
+ * @brief   Prevent shared timer functions from being used
+ */
+#define PERIPH_TIMER_PROVIDES_SET
 
 /**
  * @name   UART configuration
@@ -484,6 +557,10 @@ typedef struct {
     gpio_t rxd;             /**< GPIO used as RxD pin */
 } uart_conf_t;
 
+/**
+ * @brief   Maximum number of UART interfaces
+ */
+#define UART_NUMOF_MAX  (3)
 /** @} */
 
 #ifdef __cplusplus

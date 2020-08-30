@@ -150,6 +150,7 @@ int semtech_loramac_init(semtech_loramac_t *mac);
  * @return SEMTECH_LORAMAC_JOIN_SUCCEEDED on success
  * @return SEMTECH_LORAMAC_JOIN_FAILED on failure
  * @return SEMTECH_LORAMAC_BUSY when the mac is already active (join or tx in progress)
+ * @return SEMTECH_LORAMAC_ALREADY_JOINED if network was already joined
  */
 uint8_t semtech_loramac_join(semtech_loramac_t *mac, uint8_t type);
 
@@ -172,6 +173,7 @@ uint8_t semtech_loramac_join(semtech_loramac_t *mac, uint8_t type);
  * @return SEMTECH_LORAMAC_BUSY when the mac is already active (join or tx in progress)
  * @return SEMTECH_LORAMAC_DUTYCYCLE_RESTRICTED when the send is rejected because of dutycycle restriction
  * @return SEMTECH_LORAMAC_TX_ERROR when an invalid parameter is given
+ * @return SEMTECH_LORAMAC_TX_CNF_FAILED when message was transmitted but no ACK was received
  */
 uint8_t semtech_loramac_send(semtech_loramac_t *mac, uint8_t *data, uint8_t len);
 
@@ -494,6 +496,22 @@ void semtech_loramac_set_rx2_dr(semtech_loramac_t *mac, uint8_t dr);
  * @return                 The RX2 datarate
  */
 uint8_t semtech_loramac_get_rx2_dr(semtech_loramac_t *mac);
+
+/**
+ * @brief   Sets the Uplink Frame Counter
+ *
+ * @param[in] mac          Pointer to the mac
+ * @param[in] counter      Frame counter to set
+ */
+void semtech_loramac_set_uplink_counter(semtech_loramac_t *mac, uint32_t counter);
+
+/**
+ * @brief   Gets the Uplink Frame Counter
+ *
+ * @param[in] mac          Pointer to the mac
+ * @return                 Uplink frame counter
+ */
+uint32_t semtech_loramac_get_uplink_counter(semtech_loramac_t *mac);
 
 #ifdef MODULE_PERIPH_EEPROM
 /**

@@ -43,6 +43,19 @@
  *    configures the bus with specific parameters (clock, mode) for the duration
  *    of that transaction.
  *
+ * # (Low-) Power Implications
+ *
+ * As SPI buses are shared peripherals and the interfaces implements a
+ * transaction based paradigm, we leverage this for the SPI peripherals power
+ * management. After calling spi_init(), the SPI peripheral **should** be
+ * completely powered off (e.g. through peripheral clock gating). It **should**
+ * subsequently only be powered on and enabled in between spi_acquire() and
+ * spi_release() blocks.
+ *
+ * In case the SPI driver implementation puts the active thread to sleep during
+ * data transfer (e.g. when using DMA), the implementation might need to block
+ * certain power states during that time.
+ *
  * @{
  * @file
  * @brief       Low-level SPI peripheral driver interface definition
@@ -190,13 +203,15 @@ void spi_init(spi_t bus);
 /**
  * @brief   Initialize the used SPI bus pins, i.e. MISO, MOSI, and CLK
  *
- *
  * After calling spi_init, the pins must be initialized (i.e. spi_init is
  * calling this function internally). In normal cases, this function will not be
  * used. But there are some devices (e.g. CC110x), that use SPI bus lines also
  * for other purposes and need the option to dynamically re-configure one or
  * more of the used pins. So they can take control over certain pins and return
  * control back to the SPI driver using this function.
+ *
+ * This function must be called after @ref spi_deinit_pins to return the pins to
+ * SPI operation.
  *
  * The pins used are configured in the board's periph_conf.h.
  *
@@ -224,6 +239,94 @@ void spi_init_pins(spi_t bus);
  * @return              SPI_NOCS on invalid CS pin/line
  */
 int spi_init_cs(spi_t bus, spi_cs_t cs);
+
+#if defined(MODULE_PERIPH_SPI_RECONFIGURE) || DOXYGEN
+
+/**
+ * @brief   Change the pins of the given SPI bus back to plain GPIO functionality
+ *
+ * The pin mux of the MISO, MOSI and CLK pins of the bus will be changed back to
+ * default (GPIO) mode and the SPI bus is powered off.
+ * This allows to use the SPI pins for another function and return to SPI
+ * functionality again by calling spi_init_pins()
+ *
+ * If you want the pin to be in a defined state, call gpio_init() on it.
+ *
+ * The bus MUST not be acquired before initializing it, as this is handled
+ * internally by the spi_deinit_pins() function!
+ *
+ * Calls to spi_acquire() will block until spi_init_pins() is called again.
+ *
+ * @note Until this is implemented on all platforms, this requires the
+ *       periph_spi_reconfigure feature to be used.
+ *
+ * @param[in] dev       the device to de-initialize
+ */
+void spi_deinit_pins(spi_t dev);
+
+#if DOXYGEN
+
+/**
+ * @brief   Get the MISO pin of the given SPI bus.
+ *
+ * @param[in] dev       The device to query
+ *
+ * @note Until this is implemented on all platforms, this requires the
+ *       periph_spi_reconfigure feature to be used.
+ *
+ * @return              The GPIO used for the SPI MISO line.
+ */
+gpio_t spi_pin_miso(spi_t dev);
+
+/**
+ * @brief   Get the MOSI pin of the given SPI bus.
+ *
+ * @param[in] dev       The device to query
+ *
+ * @note Until this is implemented on all platforms, this requires the
+ *       periph_spi_reconfigure feature to be used.
+ *
+ * @return              The GPIO used for the SPI MOSI line.
+ */
+gpio_t spi_pin_mosi(spi_t dev);
+
+/**
+ * @brief   Get the CLK pin of the given SPI bus.
+ *
+ * @param[in] dev       The device to query
+ *
+ * @note Until this is implemented on all platforms, this requires the
+ *       periph_spi_reconfigure feature to be used.
+ *
+ * @return              The GPIO used for the SPI CLK line.
+ */
+gpio_t spi_pin_clk(spi_t dev);
+
+#endif /* DOXYGEN */
+#endif /* MODULE_PERIPH_SPI_RECONFIGURE */
+
+#if defined(MODULE_PERIPH_SPI_GPIO_MODE) || DOXYGEN
+
+/**
+ * @brief   SPI gpio mode
+ */
+typedef struct {
+    gpio_mode_t mosi;       /**< GPIO mode used for MOSI pin */
+    gpio_mode_t miso;       /**< GPIO mode used for MISO pin */
+    gpio_mode_t sclk;       /**< GPIO mode used for SCLK pin */
+} spi_gpio_mode_t;
+
+/**
+ * @brief   Initialize MOSI/MISO/SCLK pins with adapted GPIO modes
+ *
+ * @param[in] bus       SPI device that is used with the given CS line
+ * @param[in] mode      a struct containing the 3 modes to use on each pin
+ *
+ * @return              0 on success
+ * @return              <0 on error
+ */
+int spi_init_with_gpio_mode(spi_t bus, spi_gpio_mode_t mode);
+#endif
 
 /**
  * @brief   Start a new SPI transaction
@@ -265,7 +368,7 @@ void spi_release(spi_t bus);
  * @param[in] cs        chip select pin/line to use, set to SPI_CS_UNDEF if chip
  *                      select should not be handled by the SPI driver
  * @param[in] cont      if true, keep device selected after transfer
- * @param[in] out       byte to send out, set NULL if only receiving
+ * @param[in] out       byte to send out
  *
  * @return              the received byte
  */
@@ -295,7 +398,7 @@ void spi_transfer_bytes(spi_t bus, spi_cs_t cs, bool cont,
  * @param[in]  cs       chip select pin/line to use, set to SPI_CS_UNDEF if chip
  *                      select should not be handled by the SPI driver
  * @param[in] reg       register address to transfer data to/from
- * @param[in] out       byte to send, set NULL if only receiving data
+ * @param[in] out       byte to send
  *
  * @return              value that was read from the given register address
  */

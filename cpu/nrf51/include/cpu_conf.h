@@ -49,6 +49,12 @@ extern "C" {
 #elif defined(CPU_MODEL_NRF51X22XXAB)
 #define FLASHPAGE_NUMOF         (128U)
 #endif
+/* The minimum block size which can be written is 4B. However, the erase
+ * block is always FLASHPAGE_SIZE.
+ */
+#define FLASHPAGE_RAW_BLOCKSIZE    (4U)
+/* Writing should be always 4 bytes aligned */
+#define FLASHPAGE_RAW_ALIGNMENT    (4U)
 /** @} */
 
 /**
@@ -56,8 +62,8 @@ extern "C" {
  *          buffer size on these CPUs
  * @{
  */
-#ifndef GNRC_PKTBUF_SIZE
-#define GNRC_PKTBUF_SIZE                (2048)
+#ifndef CONFIG_GNRC_PKTBUF_SIZE
+#define CONFIG_GNRC_PKTBUF_SIZE                (2048)
 #endif
 /** @} */
 

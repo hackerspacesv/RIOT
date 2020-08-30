@@ -1,35 +1,75 @@
-.PHONY: info-buildsizes info-buildsizes-diff info-features-missing \
-        info-boards-features-missing
+.PHONY: info-buildsizes \
+        info-buildsizes-diff \
+        info-boards-supported \
+        info-boards-features-missing \
+        info-boards-features-blacklisted \
+        #
 
+BOARDDIR_GLOBAL := $(BOARDDIR)
 USEMODULE_GLOBAL := $(USEMODULE)
 USEPKG_GLOBAL := $(USEPKG)
 FEATURES_REQUIRED_GLOBAL := $(FEATURES_REQUIRED)
 FEATURES_OPTIONAL_GLOBAL := $(FEATURES_OPTIONAL)
-DISABLE_MODULE_GLOBAL := $(DISABLE_MODULE_GLOBAL)
+FEATURES_CONFLICT_GLOBAL := $(FEATURES_CONFLICT)
+FEATURES_CONFLICT_MSG_GLOBAL := $(FEATURES_MSG_CONFLICT)
+DISABLE_MODULE_GLOBAL := $(DISABLE_MODULE)
+DEFAULT_MODULE_GLOBAL := $(DEFAULT_MODULE)
+FEATURES_BLACKLIST_GLOBAL := $(FEATURES_BLACKLIST)
 
-define board_missing_features
+define board_unsatisfied_features
   BOARD             := $(1)
   USEMODULE         := $(USEMODULE_GLOBAL)
   USEPKG            := $(USEPKG_GLOBAL)
   DISABLE_MODULE    := $(DISABLE_MODULE_GLOBAL)
+  DEFAULT_MODULE    := $(DEFAULT_MODULE_GLOBAL)
   FEATURES_REQUIRED := $(FEATURES_REQUIRED_GLOBAL)
   FEATURES_OPTIONAL := $(FEATURES_OPTIONAL_GLOBAL)
+  FEATURES_CONFLICT := $(FEATURES_CONFLICT_GLOBAL)
+  FEATURES_CONFLICT_MSG := $(FEATURES_CONFLICT_MSG_GLOBAL)
+  FEATURES_BLACKLIST:= $(FEATURES_BLACKLIST_GLOBAL)
+
+  # Find matching board folder
+  BOARDDIR := $$(word 1,$$(foreach dir,$$(BOARDSDIRS),$$(wildcard $$(dir)/$$(BOARD)/.)))
 
   # Remove board specific variables set by Makefile.features/Makefile.dep
   FEATURES_PROVIDED :=
+  FEATURES_USED :=
 
   # Undefine variables that must not be defined when starting.
   # Some are sometime set as `?=`
   undefine CPU
   undefine CPU_MODEL
+  undefine CPU_ARCH
+  undefine CPU_CORE
+  undefine CPU_FAM
 
   include $(RIOTBASE)/Makefile.features
-
-  include $(RIOTBASE)/Makefile.dep
-
+  # FEATURES_USED must be populated first in this case so that dependency
+  # resolution can take optional features into account during the first pass.
+  # Also: This allows us to skip resolution if already a missing feature is
+  # detected
+  include $(RIOTMAKE)/features_check.inc.mk
   ifneq (,$$(FEATURES_MISSING))
-    BOARDS_FEATURES_MISSING += "$(1) $$(FEATURES_MISSING)"
-    BOARDS_WITH_MISSING_FEATURES += $(1)
+    # Skip full dependency resolution, as even without optional modules features
+    # and architecture specific limitations already some features are missing
+    BOARDS_FEATURES_MISSING += "$$(BOARD) $$(FEATURES_MISSING)"
+    BOARDS_WITH_MISSING_FEATURES += $$(BOARD)
+  else
+    include $(RIOTMAKE)/dependency_resolution.inc.mk
+
+    ifneq (,$$(FEATURES_MISSING))
+      BOARDS_FEATURES_MISSING += "$$(BOARD) $$(FEATURES_MISSING)"
+      BOARDS_WITH_MISSING_FEATURES += $$(BOARD)
+    endif
+
+    ifneq (,$$(FEATURES_USED_BLACKLISTED))
+      BOARDS_FEATURES_USED_BLACKLISTED += "$$(BOARD) $$(FEATURES_USED_BLACKLISTED)"
+      BOARDS_WITH_BLACKLISTED_FEATURES += $$(BOARD)
+    endif
+  endif
+
+  ifneq (,$$(DEPENDENCY_DEBUG))
+    $$(call file_save_dependencies_variables,dependencies_info-boards-supported)
   endif
 endef
 
@@ -38,8 +78,11 @@ BOARDS := $(filter-out $(BOARD_BLACKLIST), $(BOARDS))
 
 BOARDS_WITH_MISSING_FEATURES :=
 BOARDS_FEATURES_MISSING :=
-$(foreach BOARD, $(BOARDS), $(eval $(call board_missing_features,$(BOARD))))
-BOARDS := $(filter-out $(BOARDS_WITH_MISSING_FEATURES), $(BOARDS))
+BOARDS_WITH_BLACKLISTED_FEATURES :=
+BOARDS_FEATURES_USED_BLACKLISTED :=
+
+$(foreach board,$(BOARDS),$(eval $(call board_unsatisfied_features,$(board))))
+BOARDS := $(filter-out $(BOARDS_WITH_MISSING_FEATURES) $(BOARDS_WITH_BLACKLISTED_FEATURES), $(BOARDS))
 
 info-buildsizes: SHELL=bash
 info-buildsizes:
@@ -77,3 +120,10 @@ info-boards-supported:
 
 info-boards-features-missing:
 	@for f in $(BOARDS_FEATURES_MISSING); do echo $${f}; done | column -t
+
+info-boards-features-blacklisted:
+	@for f in $(BOARDS_FEATURES_USED_BLACKLISTED); do echo $${f}; done | column -t
+
+# Reset BOARDSDIR so unchanged for makefiles included after, for now only
+# needed for buildtests.inc.mk
+BOARDDIR := $(BOARDDIR_GLOBAL)

@@ -27,18 +27,45 @@
 #define ENABLE_DEBUG 0
 #include "debug.h"
 
+/*
+ * Bit introduced by SAML21xxxB, setting it on SAML21xxxxA too has no ill
+ * effects, but simplifies the code. (This bit is always set on SAML21xxxxA)
+ */
+#ifndef RTC_MODE0_CTRLA_COUNTSYNC
+#define RTC_MODE0_CTRLA_COUNTSYNC_Pos   15
+#define RTC_MODE0_CTRLA_COUNTSYNC       (0x1ul << RTC_MODE0_CTRLA_COUNTSYNC_Pos)
+#endif
+
+#ifdef REG_RTC_MODE0_CTRLA
+#define RTC_MODE0_PRESCALER       \
+    (__builtin_ctz(2 * RTT_CLOCK_FREQUENCY / RTT_FREQUENCY) << \
+    RTC_MODE0_CTRLA_PRESCALER_Pos)
+#else
+#define RTC_MODE0_PRESCALER       \
+    (__builtin_ctz(RTT_CLOCK_FREQUENCY / RTT_FREQUENCY) << \
+    RTC_MODE0_CTRL_PRESCALER_Pos)
+#endif
+
 static rtt_cb_t _overflow_cb;
-static void* _overflow_arg;
+static void *_overflow_arg;
 
 static rtt_cb_t _cmp0_cb;
-static void* _cmp0_arg;
+static void *_cmp0_arg;
 
 static void _wait_syncbusy(void)
 {
 #ifdef REG_RTC_MODE0_SYNCBUSY
     while (RTC->MODE0.SYNCBUSY.reg) {}
 #else
-    while(RTC->MODE0.STATUS.bit.SYNCBUSY) {}
+    while (RTC->MODE0.STATUS.bit.SYNCBUSY) {}
+#endif
+}
+
+static void _rtt_read_req(void)
+{
+#ifdef RTC_READREQ_RREQ
+    RTC->MODE0.READREQ.reg = RTC_READREQ_RREQ;
+    _wait_syncbusy();
 #endif
 }
 
@@ -57,7 +84,8 @@ static inline void _rtt_reset(void)
 static void _rtt_clock_setup(void)
 {
     /* Setup clock GCLK2 with OSC32K */
-    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN(2) | GCLK_CLKCTRL_ID_RTC;
+    GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN(SAM0_GCLK_32KHZ) |
+                        GCLK_CLKCTRL_ID_RTC;
     while (GCLK->STATUS.bit.SYNCBUSY) {}
 }
 #else
@@ -79,6 +107,7 @@ static void _rtt_clock_setup(void)
 #else
 #error "No clock source for RTT selected. "
 #endif
+
 }
 #endif /* !CPU_SAMD21 - Clock Setup */
 
@@ -91,15 +120,17 @@ void rtt_init(void)
 
     /* set 32bit counting mode & enable the RTC */
 #ifdef REG_RTC_MODE0_CTRLA
-    RTC->MODE0.CTRLA.reg = RTC_MODE0_CTRLA_MODE(0) | RTC_MODE0_CTRLA_ENABLE;
+    RTC->MODE0.CTRLA.reg = RTC_MODE0_CTRLA_MODE(0) | RTC_MODE0_CTRLA_ENABLE |
+                           RTC_MODE0_CTRLA_COUNTSYNC | RTC_MODE0_PRESCALER;
 #else
-    RTC->MODE0.CTRL.reg = RTC_MODE0_CTRL_MODE(0) | RTC_MODE0_CTRL_ENABLE;
+    RTC->MODE0.CTRL.reg = RTC_MODE0_CTRL_MODE(0) | RTC_MODE0_CTRL_ENABLE |
+                          RTC_MODE0_PRESCALER;
 #endif
     _wait_syncbusy();
 
     /* initially clear flag */
-    RTC->MODE0.INTFLAG.reg |= RTC_MODE0_INTFLAG_CMP0
-                           |  RTC_MODE0_INTFLAG_OVF;
+    RTC->MODE0.INTFLAG.reg = RTC_MODE0_INTFLAG_CMP0
+                             |  RTC_MODE0_INTFLAG_OVF;
 
     NVIC_EnableIRQ(RTC_IRQn);
 
@@ -116,17 +147,18 @@ void rtt_set_overflow_cb(rtt_cb_t cb, void *arg)
     _overflow_arg = arg;
 
     /* enable overflow interrupt */
-    RTC->MODE0.INTENSET.bit.OVF = 1;
+    RTC->MODE0.INTENSET.reg = RTC_MODE0_INTENSET_OVF;
 }
 void rtt_clear_overflow_cb(void)
 {
     /* disable overflow interrupt */
-    RTC->MODE0.INTENCLR.bit.OVF = 1;
+    RTC->MODE0.INTENCLR.reg = RTC_MODE0_INTENCLR_OVF;
 }
 
 uint32_t rtt_get_counter(void)
 {
     _wait_syncbusy();
+    _rtt_read_req();
     return RTC->MODE0.COUNT.reg;
 }
 
@@ -158,14 +190,14 @@ void rtt_set_alarm(uint32_t alarm, rtt_cb_t cb, void *arg)
     _wait_syncbusy();
 
     /* enable compare interrupt and clear flag */
-    RTC->MODE0.INTFLAG.reg |= RTC_MODE0_INTFLAG_CMP0;
-    RTC->MODE0.INTENSET.reg |= RTC_MODE0_INTENSET_CMP0;
+    RTC->MODE0.INTFLAG.reg = RTC_MODE0_INTFLAG_CMP0;
+    RTC->MODE0.INTENSET.reg = RTC_MODE0_INTENSET_CMP0;
 }
 
 void rtt_clear_alarm(void)
 {
     /* clear compare interrupt */
-    RTC->MODE0.INTENCLR.bit.CMP0 = 1;
+    RTC->MODE0.INTENCLR.reg = RTC_MODE0_INTENCLR_CMP0;
 }
 
 void rtt_poweron(void)
@@ -189,16 +221,16 @@ void rtt_poweroff(void)
 void isr_rtc(void)
 {
     if (RTC->MODE0.INTFLAG.bit.OVF) {
-        RTC->MODE0.INTFLAG.reg |= RTC_MODE0_INTFLAG_OVF;
+        RTC->MODE0.INTFLAG.reg = RTC_MODE0_INTFLAG_OVF;
         if (_overflow_cb) {
             _overflow_cb(_overflow_arg);
         }
     }
     if (RTC->MODE0.INTFLAG.bit.CMP0) {
         /* clear flag */
-        RTC->MODE0.INTFLAG.reg |= RTC_MODE0_INTFLAG_CMP0;
+        RTC->MODE0.INTFLAG.reg = RTC_MODE0_INTFLAG_CMP0;
         /* disable interrupt */
-        RTC->MODE0.INTENCLR.bit.CMP0 = 1;
+        RTC->MODE0.INTENCLR.reg = RTC_MODE0_INTENCLR_CMP0;
         if (_cmp0_cb) {
             _cmp0_cb(_cmp0_arg);
         }

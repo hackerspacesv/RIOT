@@ -1,9 +1,5 @@
-# define the cpu used by the atsamr21-breakout board
-export CPU = samd21
-export CPU_MODEL = samr21g18a
-
 # export needed for flash rule
-export PORT_LINUX ?= /dev/ttyACM0
+PORT_LINUX ?= /dev/ttyACM0
 
 # setup serial terminal
 include $(RIOTMAKE)/tools/serial.inc.mk
@@ -17,6 +13,6 @@ include $(RIOTMAKE)/tools/bossa.inc.mk
 CFLAGS += -DAT86RF2XX_DEFAULT_ANT_DIV=\(1\)
 
 # Set the USB VID/PID for this board.
-CFLAGS += -DUSB_CONFIG_VID=0x1209 -DUSB_CONFIG_PID=0x053A
+CFLAGS += -DCONFIG_USB_VID=0x1209 -DCONFIG_USB_PID=0x053A
 
 include $(RIOTMAKE)/boards/sam0.inc.mk

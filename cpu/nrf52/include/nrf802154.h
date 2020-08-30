@@ -17,7 +17,7 @@
  * - NETDEV_EVENT_RX_COMPLETE
  * - NETDEV_EVENT_TX_COMPLETE
  *
- * Transmission options not yet impemented:
+ * Transmission options not yet implemented:
  * - Send acknowledgement for packages
  * - Request acknowledgement
  * - Retransmit unacked packages
@@ -41,6 +41,23 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @defgroup drivers_nrf52_802154_conf  nrf802154 driver compile configuration
+ * @ingroup drivers_nrf52_802154
+ * @ingroup config_drivers_netdev
+ * @{
+ */
+
+/**
+ * @brief NRF802154 default CCA threshold value for CCACTRL register.
+ *
+ * @note  This value was copied from the Nordic reference driver configuration
+ */
+#ifndef CONFIG_NRF802154_CCA_THRESH_DEFAULT
+#define CONFIG_NRF802154_CCA_THRESH_DEFAULT 0x14
+#endif
+/** @} */
 
 /**
  * @brief   Export the netdev device descriptor

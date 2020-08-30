@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Gunar Schorcht
+ * Copyright (C) 2019 Gunar Schorcht
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -21,44 +21,21 @@
 #ifndef IRQ_ARCH_H
 #define IRQ_ARCH_H
 
-#include "irq.h"
-#include "sched.h"
-#include "thread.h"
+#include "irq_arch_common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief   Indicates the interrupt nesting depth
+ * @name    Software interrupt types
  *
- * The variable is increment on entry into and decremented on exit from an ISR.
+ * These definitions are used to distinguish different types of software
+ * interrupts in software interrupt handler.
  */
-extern uint32_t irq_interrupt_nesting;
-
-/**
- * @name   Macros to enter and exit an ISR
- *
- * In non-SDK interrupt handling all stuff is done in `_frxt_int_enter`
- * and `_frxt_int_exit`. These macros do therefore nothing and are kept only
- * for source code compatibility.
- *
- * @{
- */
-#define irq_isr_enter()
-#define irq_isr_exit()
-/** @} */
-
-/**
- * @name   Macros to enter and exit a critical region
- *
- * @note since they use a local variable they can be used only in same function
- *
- * @{
- */
-#define critical_enter()   int _irq_state = irq_disable ()
-#define critical_exit()    irq_restore(_irq_state)
-/** @} */
+#define ETS_SOFT_INT_NONE       0
+#define ETS_SOFT_INT_YIELD      1
+#define ETS_SOFT_INT_HDL_MAC    2
 
 #ifdef __cplusplus
 }

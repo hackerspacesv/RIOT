@@ -120,7 +120,7 @@ extern "C" {
 /**
  * @defgroup    net_gnrc_ipv6_conf  GNRC IPv6 compile configurations
  * @ingroup     net_gnrc_ipv6
- * @ingroup     config
+ * @ingroup     net_gnrc_conf
  * @{
  */
 /**
@@ -138,10 +138,15 @@ extern "C" {
 #endif
 
 /**
- * @brief   Default message queue size to use for the IPv6 thread.
+ * @brief   Default message queue size to use for the IPv6 thread (as exponent
+ *          of 2^n).
+ *
+ *          As the queue size ALWAYS needs to be power of two, this option
+ *          represents the exponent of 2^n, which will be used as the size of
+ *          the queue.
  */
-#ifndef GNRC_IPV6_MSG_QUEUE_SIZE
-#define GNRC_IPV6_MSG_QUEUE_SIZE    (8U)
+#ifndef CONFIG_GNRC_IPV6_MSG_QUEUE_SIZE_EXP
+#define CONFIG_GNRC_IPV6_MSG_QUEUE_SIZE_EXP    (3U)
 #endif
 
 #ifdef DOXYGEN
@@ -163,6 +168,13 @@ extern "C" {
 #define GNRC_IPV6_STATIC_LLADDR
 #endif /* DOXYGEN */
 /** @} */
+
+/**
+ * @brief Message queue size to use for the IPv6 thread.
+ */
+#ifndef GNRC_IPV6_MSG_QUEUE_SIZE
+#define GNRC_IPV6_MSG_QUEUE_SIZE    (1 << CONFIG_GNRC_IPV6_MSG_QUEUE_SIZE_EXP)
+#endif
 
 /**
  * @brief   The PID to the IPv6 thread.

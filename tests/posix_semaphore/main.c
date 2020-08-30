@@ -78,8 +78,7 @@ static void test1(void)
     kernel_pid_t pid = thread_create(test1_thread_stack,
                                      sizeof(test1_thread_stack),
                                      THREAD_PRIORITY_MAIN - 1,
-                                     THREAD_CREATE_STACKTEST |
-                                     THREAD_CREATE_WOUT_YIELD,
+                                     THREAD_CREATE_STACKTEST,
                                      test1_second_thread,
                                      NULL,
                                      "second");
@@ -293,7 +292,6 @@ void test4(void)
 int main(void)
 {
     msg_init_queue(main_msg_queue, SEMAPHORE_MSG_QUEUE_SIZE);
-    xtimer_init();
     puts("######################### TEST1:");
     test1();
     puts("######################### TEST2:");

@@ -76,11 +76,10 @@ static const gnrc_netif_ops_t lwmac_ops = {
     .msg_handler = _lwmac_msg_handler,
 };
 
-gnrc_netif_t *gnrc_netif_lwmac_create(char *stack, int stacksize,
-                                      char priority, char *name,
-                                      netdev_t *dev)
+int gnrc_netif_lwmac_create(gnrc_netif_t *netif, char *stack, int stacksize,
+                            char priority, char *name, netdev_t *dev)
 {
-    return gnrc_netif_create(stack, stacksize, priority, name, dev,
+    return gnrc_netif_create(netif, stack, stacksize, priority, name, dev,
                              &lwmac_ops);
 }
 
@@ -174,7 +173,7 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
 
             hdr->lqi = rx_info.lqi;
             hdr->rssi = rx_info.rssi;
-            hdr->if_pid = thread_getpid();
+            gnrc_netif_hdr_set_netif(hdr, netif);
             pkt->type = state->proto;
 #if ENABLE_DEBUG
             DEBUG("_recv_ieee802154: received packet from %s of length %u\n",
@@ -202,7 +201,7 @@ static gnrc_mac_tx_neighbor_t *_next_tx_neighbor(gnrc_netif_t *netif)
     gnrc_mac_tx_neighbor_t *next = NULL;
     uint32_t phase_nearest = GNRC_LWMAC_PHASE_MAX;
 
-    for (unsigned i = 0; i < GNRC_MAC_NEIGHBOR_COUNT; i++) {
+    for (unsigned i = 0; i < CONFIG_GNRC_MAC_NEIGHBOR_COUNT; i++) {
         if (gnrc_priority_pktqueue_length(&netif->mac.tx.neighbors[i].queue) > 0) {
             /* Unknown destinations are initialized with their phase at the end
              * of the local interval, so known destinations that still wakeup
@@ -294,14 +293,15 @@ void lwmac_set_state(gnrc_netif_t *netif, gnrc_lwmac_state_t newstate)
                 uint32_t alarm;
 
                 rtt_clear_alarm();
-                alarm = random_uint32_range(RTT_US_TO_TICKS((3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2)),
-                                            RTT_US_TO_TICKS(GNRC_LWMAC_WAKEUP_INTERVAL_US -
-                                                            (3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2)));
+                alarm = random_uint32_range(
+                            RTT_US_TO_TICKS((3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2)),
+                            RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US -
+                                            (3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2)));
                 LOG_WARNING("WARNING: [LWMAC] phase backoffed: %lu us\n",
                             (unsigned long)RTT_TICKS_TO_US(alarm));
                 netif->mac.prot.lwmac.last_wakeup = netif->mac.prot.lwmac.last_wakeup + alarm;
                 alarm = _next_inphase_event(netif->mac.prot.lwmac.last_wakeup,
-                                            RTT_US_TO_TICKS(GNRC_LWMAC_WAKEUP_INTERVAL_US));
+                            RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US));
                 rtt_set_alarm(alarm, rtt_cb, (void *) GNRC_LWMAC_EVENT_RTT_WAKEUP_PENDING);
             }
 
@@ -375,7 +375,7 @@ static void _sleep_management(gnrc_netif_t *netif)
 
         if (neighbour != NULL) {
             /* if phase is unknown, send immediately. */
-            if (neighbour->phase > RTT_TICKS_TO_US(GNRC_LWMAC_WAKEUP_INTERVAL_US)) {
+            if (neighbour->phase > RTT_TICKS_TO_US(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US)) {
                 netif->mac.tx.current_neighbor = neighbour;
                 gnrc_lwmac_set_tx_continue(netif, false);
                 netif->mac.tx.tx_burst_count = 0;
@@ -389,16 +389,16 @@ static void _sleep_management(gnrc_netif_t *netif)
 
             /* If there's not enough time to prepare a WR to catch the phase
              * postpone to next interval */
-            if (time_until_tx < GNRC_LWMAC_WR_PREPARATION_US) {
-                time_until_tx += GNRC_LWMAC_WAKEUP_INTERVAL_US;
+            if (time_until_tx < CONFIG_GNRC_LWMAC_WR_PREPARATION_US) {
+                time_until_tx += CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US;
             }
-            time_until_tx -= GNRC_LWMAC_WR_PREPARATION_US;
+            time_until_tx -= CONFIG_GNRC_LWMAC_WR_PREPARATION_US;
 
             /* add a random time before goto TX, for avoiding one node for
              * always holding the medium (if the receiver's phase is recorded earlier in this
              * particular node) */
             uint32_t random_backoff;
-            random_backoff = random_uint32_range(0, GNRC_LWMAC_TIME_BETWEEN_WR_US);
+            random_backoff = random_uint32_range(0, CONFIG_GNRC_LWMAC_TIME_BETWEEN_WR_US);
             time_until_tx = time_until_tx + random_backoff;
 
             gnrc_lwmac_set_timeout(netif, GNRC_LWMAC_TIMEOUT_WAIT_DEST_WAKEUP, time_until_tx);
@@ -428,7 +428,7 @@ static void _rx_management_failed(gnrc_netif_t *netif)
     LOG_DEBUG("[LWMAC] Reception was NOT successful\n");
     gnrc_lwmac_rx_stop(netif);
 
-    if (netif->mac.rx.rx_bad_exten_count >= GNRC_LWMAC_MAX_RX_EXTENSION_NUM) {
+    if (netif->mac.rx.rx_bad_exten_count >= CONFIG_GNRC_LWMAC_MAX_RX_EXTENSION_NUM) {
         gnrc_lwmac_set_quit_rx(netif, true);
     }
 
@@ -443,7 +443,7 @@ static void _rx_management_failed(gnrc_netif_t *netif)
         phase = phase - netif->mac.prot.lwmac.last_wakeup;
     }
     /* If the relative phase is beyond 4/5 cycle time, go to sleep. */
-    if (phase > (4 * RTT_US_TO_TICKS(GNRC_LWMAC_WAKEUP_INTERVAL_US) / 5)) {
+    if (phase > (4 * RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US) / 5)) {
         gnrc_lwmac_set_quit_rx(netif, true);
     }
 
@@ -474,7 +474,7 @@ static void _rx_management_success(gnrc_netif_t *netif)
         phase = phase - netif->mac.prot.lwmac.last_wakeup;
     }
     /* If the relative phase is beyond 4/5 cycle time, go to sleep. */
-    if (phase > (4 * RTT_US_TO_TICKS(GNRC_LWMAC_WAKEUP_INTERVAL_US) / 5)) {
+    if (phase > (4 * RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US) / 5)) {
         gnrc_lwmac_set_quit_rx(netif, true);
     }
 
@@ -676,7 +676,7 @@ static void rtt_cb(void *arg)
 {
     msg_t msg;
 
-    msg.content.value = ((uint32_t) arg) & 0xffff;
+    msg.content.value = (uint16_t)((uintptr_t) arg);
     msg.type = GNRC_LWMAC_EVENT_RTT_TYPE;
     msg_send(&msg, lwmac_pid);
 
@@ -706,7 +706,7 @@ void rtt_handler(uint32_t event, gnrc_netif_t *netif)
         case GNRC_LWMAC_EVENT_RTT_SLEEP_PENDING: {
             /* Set next wake-up timing. */
             alarm = _next_inphase_event(netif->mac.prot.lwmac.last_wakeup,
-                                        RTT_US_TO_TICKS(GNRC_LWMAC_WAKEUP_INTERVAL_US));
+                                        RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US));
             rtt_set_alarm(alarm, rtt_cb, (void *) GNRC_LWMAC_EVENT_RTT_WAKEUP_PENDING);
             lwmac_set_state(netif, GNRC_LWMAC_SLEEPING);
             break;
@@ -731,7 +731,7 @@ void rtt_handler(uint32_t event, gnrc_netif_t *netif)
             LOG_DEBUG("[LWMAC] RTT: Resume duty cycling\n");
             rtt_clear_alarm();
             alarm = _next_inphase_event(netif->mac.prot.lwmac.last_wakeup,
-                                        RTT_US_TO_TICKS(GNRC_LWMAC_WAKEUP_INTERVAL_US));
+                                        RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US));
             rtt_set_alarm(alarm, rtt_cb, (void *) GNRC_LWMAC_EVENT_RTT_WAKEUP_PENDING);
             gnrc_lwmac_set_dutycycle_active(netif, true);
             break;
@@ -827,7 +827,7 @@ static void _lwmac_event_cb(netdev_t *dev, netdev_event_t event)
         }
     }
 
-    /* Execute main state machine because something just happend*/
+    /* Execute main state machine because something just happened*/
     while (gnrc_lwmac_get_reschedule(netif)) {
         lwmac_update(netif);
     }
@@ -843,7 +843,7 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
 
     lwmac_schedule_update(netif);
 
-    /* Execute main state machine because something just happend*/
+    /* Execute main state machine because something just happened*/
     while (gnrc_lwmac_get_reschedule(netif)) {
         lwmac_update(netif);
     }
@@ -891,7 +891,7 @@ static void _lwmac_msg_handler(gnrc_netif_t *netif, msg_t *msg)
         }
     }
 
-    /* Execute main state machine because something just happend*/
+    /* Execute main state machine because something just happened*/
     while (gnrc_lwmac_get_reschedule(netif)) {
         lwmac_update(netif);
     }
@@ -901,6 +901,7 @@ static void _lwmac_init(gnrc_netif_t *netif)
 {
     netdev_t *dev;
 
+    gnrc_netif_default_init(netif);
     dev = netif->dev;
     dev->event_callback = _lwmac_event_cb;
 

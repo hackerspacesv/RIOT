@@ -22,6 +22,7 @@
 
 #include "periph_cpu.h"
 #include "cfg_clock_32_1.h"
+#include "cfg_i2c_default.h"
 #include "cfg_rtt_default.h"
 #include "cfg_spi_default.h"
 #include "cfg_timer_default.h"
@@ -38,6 +39,11 @@ extern "C" {
 #define UART_PIN_RX         GPIO_PIN(0,19)
 #define UART_PIN_TX         GPIO_PIN(0,20)
 /** @} */
+
+/**
+ * @brief Enable the internal DC/DC converter
+ */
+#define NRF5X_ENABLE_DCDC
 
 #ifdef __cplusplus
 }

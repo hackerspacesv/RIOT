@@ -45,8 +45,7 @@ enum {
 #define CPU_ATMEGA_EXT_INTS    { GPIO_PIN(PORT_D, 0), \
                                  GPIO_PIN(PORT_D, 1), \
                                  GPIO_PIN(PORT_D, 2), \
-                                 GPIO_PIN(PORT_D, 3), \
-                                 GPIO_PIN(PORT_E, 7) }
+                                 GPIO_PIN(PORT_D, 3) }
 
 /**
  * @name   Defines for the I2C interface
@@ -66,6 +65,9 @@ enum {
 #ifdef __cplusplus
 }
 #endif
+
+#include "periph_conf.h"
+#include "default_timer_config.h"
 
 #endif /* PERIPH_CPU_H */
 /** @} */

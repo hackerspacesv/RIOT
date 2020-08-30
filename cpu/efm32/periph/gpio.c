@@ -62,7 +62,7 @@ int gpio_init(gpio_t pin, gpio_mode_t mode)
 
     /* configure pin */
     GPIO_PinModeSet(_port_num(pin), _pin_num(pin), mode >> 1, mode & 0x1);
-#ifdef _SILICON_LABS_32B_SERIES_0
+#if defined(_SILICON_LABS_32B_SERIES_0)
     GPIO_DriveModeSet(_port_num(pin), gpioDriveModeStandard);
 #endif
 
@@ -115,7 +115,7 @@ int gpio_init_int(gpio_t pin, gpio_mode_t mode, gpio_flank_t flank,
     }
 
     /* just in case, disable the interrupt for this pin */
-    GPIO_IntDisable(_pin_num(pin));
+    GPIO_IntDisable(_pin_mask(pin));
 
     /* store interrupt callback */
     isr_ctx[_pin_num(pin)].cb = cb;

@@ -51,6 +51,8 @@
 #include <inttypes.h>
 #include <stddef.h>
 
+#include "hashes/sha2xx_common.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,14 +70,7 @@ extern "C" {
 /**
  * @brief Context for cipher operations based on sha256
  */
-typedef struct {
-    /** global state */
-    uint32_t state[8];
-    /** processed bytes counter */
-    uint32_t count[2];
-    /** data buffer */
-    unsigned char buf[64];
-} sha256_context_t;
+typedef sha2xx_context_t sha256_context_t;
 
 /**
  * @brief Context for HMAC operations based on sha256
@@ -111,7 +106,10 @@ void sha256_init(sha256_context_t *ctx);
  * @param[in] data Input data
  * @param[in] len  Length of @p data
  */
-void sha256_update(sha256_context_t *ctx, const void *data, size_t len);
+static inline void sha256_update(sha256_context_t *ctx, const void *data, size_t len)
+{
+    sha2xx_update(ctx, data, len);
+}
 
 /**
  * @brief SHA-256 finalization.  Pads the input data, exports the hash value,
@@ -120,11 +118,14 @@ void sha256_update(sha256_context_t *ctx, const void *data, size_t len);
  * @param ctx    sha256_context_t handle to use
  * @param digest resulting digest, this is the hash of all the bytes
  */
-void sha256_final(sha256_context_t *ctx, void *digest);
+static inline void sha256_final(sha256_context_t *ctx, void *digest)
+{
+    sha2xx_final(ctx, digest, SHA256_DIGEST_LENGTH);
+}
 
 /**
  * @brief A wrapper function to simplify the generation of a hash, this is
- * usefull for generating sha256 for one buffer
+ * useful for generating sha256 for one buffer
  *
  * @param[in] data   pointer to the buffer to generate hash from
  * @param[in] len    length of the buffer
@@ -176,7 +177,7 @@ const void *hmac_sha256(const void *key, size_t key_length,
                         const void *data, size_t len, void *digest);
 
 /**
- * @brief function to produce a hash chain statring with a given seed element.
+ * @brief function to produce a hash chain starting with a given seed element.
  *        The chain is computed by taking the sha256 from the seed,
  *        hash the resulting sha256 and continuing taking sha256
  *        from each result consecutively.
@@ -193,7 +194,7 @@ void *sha256_chain(const void *seed, size_t seed_length,
                    size_t elements, void *tail_element);
 
 /**
- * @brief function to produce a hash chain statring with a given seed element.
+ * @brief function to produce a hash chain starting with a given seed element.
  *        The chain is computed the same way as done with sha256_chain().
  *        Additionally intermediate elements are saved while computing the chain.
  *        This slows down computation, but provides the caller with indexed

@@ -31,8 +31,8 @@
 
 #define PROTOCOL_VERSION        (0x01)
 
-#define RETRY_TO                (ASYMCUTE_T_RETRY * US_PER_SEC)
-#define KEEPALIVE_TO            (ASYMCUTE_KEEPALIVE_PING * US_PER_SEC)
+#define RETRY_TO                (CONFIG_ASYMCUTE_T_RETRY * US_PER_SEC)
+#define KEEPALIVE_TO            (CONFIG_ASYMCUTE_KEEPALIVE_PING * US_PER_SEC)
 
 #define VALID_PUBLISH_FLAGS     (MQTTSN_QOS_1 | MQTTSN_DUP | MQTTSN_RETAIN)
 #define VALID_SUBSCRIBE_FLAGS   (MQTTSN_QOS_1 | MQTTSN_DUP)
@@ -181,7 +181,7 @@ static void _req_send(asymcute_req_t *req, asymcute_con_t *con,
     /* initialize request */
     req->con = con;
     req->cb = cb;
-    req->retry_cnt = ASYMCUTE_N_RETRY;
+    req->retry_cnt = CONFIG_ASYMCUTE_N_RETRY;
     event_callback_init(&req->to_evt, _on_req_timeout, (void *)req);
     event_timeout_init(&req->to_timer, &_queue, &req->to_evt.super);
     /* add request to the pending queue (if non-con request) */
@@ -281,6 +281,9 @@ static unsigned _on_suback_timeout(asymcute_con_t *con, asymcute_req_t *req)
 
     /* reset the subscription context */
     asymcute_sub_t *sub = (asymcute_sub_t *)req->arg;
+    if (sub == NULL) {
+        return ASYMCUTE_REJECTED;
+    }
     sub->topic = NULL;
     return ASYMCUTE_TIMEOUT;
 }
@@ -325,6 +328,7 @@ static void _on_connack(asymcute_con_t *con, const uint8_t *data, size_t len)
     if (data[2] == MQTTSN_ACCEPTED) {
         con->state = CONNECTED;
         /* start keep alive timer */
+        con->keepalive_retry_cnt = CONFIG_ASYMCUTE_N_RETRY;
         event_timeout_set(&con->keepalive_timer, KEEPALIVE_TO);
         ret = ASYMCUTE_CONNECTED;
     }
@@ -365,9 +369,9 @@ static void _on_pingresp(asymcute_con_t *con)
 {
     mutex_lock(&con->lock);
     /* only handle ping resp message if we are actually waiting for a reply */
-    if (con->keepalive_retry_cnt < ASYMCUTE_N_RETRY) {
+    if (con->keepalive_retry_cnt < CONFIG_ASYMCUTE_N_RETRY) {
         event_timeout_clear(&con->keepalive_timer);
-        con->keepalive_retry_cnt = ASYMCUTE_N_RETRY;
+        con->keepalive_retry_cnt = CONFIG_ASYMCUTE_N_RETRY;
         event_timeout_set(&con->keepalive_timer, KEEPALIVE_TO);
     }
     mutex_unlock(&con->lock);
@@ -388,6 +392,10 @@ static void _on_regack(asymcute_con_t *con, const uint8_t *data, size_t len)
     if (data[6] == MQTTSN_ACCEPTED) {
         /* finish the registration by applying the topic id */
         asymcute_topic_t *topic = (asymcute_topic_t *)req->arg;
+        if (topic == NULL) {
+            return;
+        }
+
         topic->id = byteorder_bebuftohs(&data[2]);
         topic->con = con;
         ret = ASYMCUTE_REGISTERED;
@@ -467,6 +475,10 @@ static void _on_suback(asymcute_con_t *con, const uint8_t *data, size_t len)
     if (data[7] == MQTTSN_ACCEPTED) {
         /* parse and apply assigned topic id */
         asymcute_sub_t *sub = (asymcute_sub_t *)req->arg;
+        if (sub == NULL) {
+            return;
+        }
+
         sub->topic->id = byteorder_bebuftohs(&data[3]);
         sub->topic->con = con;
         /* insert subscription to connection context */
@@ -493,7 +505,9 @@ static void _on_unsuback(asymcute_con_t *con, const uint8_t *data, size_t len)
 
     /* remove subscription from list */
     asymcute_sub_t *sub = (asymcute_sub_t *)req->arg;
-    if (con->subscriptions == sub) {
+    if (sub == NULL) {
+        return;
+    } else if (con->subscriptions == sub) {
         con->subscriptions = sub->next;
     }
     else {
@@ -623,7 +637,7 @@ int asymcute_listener_run(asymcute_con_t *con, char *stack, size_t stacksize,
     random_bytes((uint8_t *)&con->last_id, 2);
     event_callback_init(&con->keepalive_evt, _on_keepalive_evt, con);
     event_timeout_init(&con->keepalive_timer, &_queue, &con->keepalive_evt.super);
-    con->keepalive_retry_cnt = ASYMCUTE_N_RETRY;
+    con->keepalive_retry_cnt = CONFIG_ASYMCUTE_N_RETRY;
     con->state = NOTCON;
     con->user_cb = callback;
 
@@ -665,7 +679,7 @@ int asymcute_topic_init(asymcute_topic_t *topic, const char *topic_name,
     }
     else {
         len = strlen(topic_name);
-        if ((len == 0) || (len > ASYMCUTE_TOPIC_MAXLEN)) {
+        if ((len == 0) || (len > CONFIG_ASYMCUTE_TOPIC_MAXLEN)) {
             return ASYMCUTE_OVERFLOW;
         }
     }
@@ -738,7 +752,7 @@ int asymcute_connect(asymcute_con_t *con, asymcute_req_t *req,
     req->data[1] = MQTTSN_CONNECT;
     req->data[2] = ((clean) ? MQTTSN_CS : 0);
     req->data[3] = PROTOCOL_VERSION;
-    byteorder_htobebufs(&req->data[4], ASYMCUTE_KEEPALIVE);
+    byteorder_htobebufs(&req->data[4], CONFIG_ASYMCUTE_KEEPALIVE);
     memcpy(&req->data[6], cli_id, id_len);
     req->data_len = (size_t)req->data[0];
     _req_send(req, con, _on_con_timeout);

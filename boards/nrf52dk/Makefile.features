@@ -1,2 +1,3 @@
-include $(RIOTBOARD)/common/nrf52/Makefile.nrf52832.features
+CPU_MODEL = nrf52832xxaa
+
 include $(RIOTBOARD)/common/nrf52xxxdk/Makefile.features

@@ -42,7 +42,6 @@ extern "C" {
 /* UART pin configuration */
 #define UART_PIN_RX       16
 #define UART_PIN_TX       17
-#define UART_HWFLOWCTRL   0
 #define UART_PIN_RTS      19
 #define UART_PIN_CTS      18
 /** @} */
@@ -66,7 +65,7 @@ static const spi_conf_t spi_config[] = {
     }
 };
 
-#define SPI_NUMOF           (sizeof(spi_config) / sizeof(spi_config[0]))
+#define SPI_NUMOF           ARRAY_SIZE(spi_config)
 /** @} */
 
 #ifdef __cplusplus

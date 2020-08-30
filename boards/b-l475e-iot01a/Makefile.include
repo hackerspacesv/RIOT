@@ -1,7 +1,3 @@
-# the cpu to build for
-export CPU = stm32l4
-export CPU_MODEL = stm32l475vg
-
 # we use shared STM32 configuration snippets
 INCLUDES += -I$(RIOTBOARD)/common/stm32/include
 
@@ -14,6 +10,10 @@ include $(RIOTMAKE)/tools/serial.inc.mk
 
 # this board has an on-board ST-link adapter
 DEBUG_ADAPTER ?= stlink
+
+# The board can become un-flashable after some execution,
+# use connect_assert_srst to always be able to flash or reset the board.
+OPENOCD_RESET_USE_CONNECT_ASSERT_SRST ?= 1
 
 # this board uses openocd
 include $(RIOTMAKE)/tools/openocd.inc.mk

@@ -18,6 +18,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <errno.h>
 
 #include "cpu.h"
@@ -125,10 +126,10 @@ void i2c_init(i2c_t dev)
     I2C_Init(i2c_config[dev].dev, &init);
 
     /* configure pin functions */
-#ifdef _SILICON_LABS_32B_SERIES_0
+#if defined(_SILICON_LABS_32B_SERIES_0)
     i2c_config[dev].dev->ROUTE = (i2c_config[dev].loc |
                                   I2C_ROUTE_SDAPEN | I2C_ROUTE_SCLPEN);
-#else
+#elif defined(_SILICON_LABS_32B_SERIES_1)
     i2c_config[dev].dev->ROUTEPEN = I2C_ROUTEPEN_SDAPEN | I2C_ROUTEPEN_SCLPEN;
     i2c_config[dev].dev->ROUTELOC0 = i2c_config[dev].loc;
 #endif
@@ -152,15 +153,15 @@ int i2c_acquire(i2c_t dev)
     return 0;
 }
 
-int i2c_release(i2c_t dev)
+void i2c_release(i2c_t dev)
 {
+    assert(dev < I2C_NUMOF);
+
     /* disable peripheral */
     CMU_ClockEnable(i2c_config[dev].cmu, false);
 
     /* release lock */
     mutex_unlock(&i2c_lock[dev]);
-
-    return 0;
 }
 
 int i2c_read_bytes(i2c_t dev, uint16_t address, void *data, size_t length, uint8_t flags)
@@ -190,7 +191,7 @@ int i2c_read_regs(i2c_t dev, uint16_t address, uint16_t reg,
         return -EOPNOTSUPP;
     }
 
-    /* Handle endianess of register if 16 bit */
+    /* Handle endianness of register if 16 bit */
     if (flags & I2C_REG16) {
         reg_end = htons(reg); /* Make sure register is in big-endian on I2C bus */
     }
@@ -236,7 +237,7 @@ int i2c_write_regs(i2c_t dev, uint16_t address, uint16_t reg,
         return -EOPNOTSUPP;
     }
 
-    /* Handle endianess of register if 16 bit */
+    /* Handle endianness of register if 16 bit */
     if (flags & I2C_REG16) {
         reg_end = htons(reg); /* Make sure register is in big-endian on I2C bus */
     }

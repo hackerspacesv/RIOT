@@ -32,17 +32,17 @@ static int _send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt);
 static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif);
 
 static const gnrc_netif_ops_t ieee802154_ops = {
+    .init = gnrc_netif_default_init,
     .send = _send,
     .recv = _recv,
     .get = gnrc_netif_get_from_netdev,
     .set = gnrc_netif_set_from_netdev,
 };
 
-gnrc_netif_t *gnrc_netif_ieee802154_create(char *stack, int stacksize,
-                                           char priority, char *name,
-                                           netdev_t *dev)
+int gnrc_netif_ieee802154_create(gnrc_netif_t *netif, char *stack, int stacksize,
+                                 char priority, char *name, netdev_t *dev)
 {
-    return gnrc_netif_create(stack, stacksize, priority, name, dev,
+    return gnrc_netif_create(netif, stack, stacksize, priority, name, dev,
                              &ieee802154_ops);
 }
 
@@ -131,7 +131,7 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
             gnrc_netif_hdr_t *hdr = netif_snip->data;
             hdr->lqi = rx_info.lqi;
             hdr->rssi = rx_info.rssi;
-            hdr->if_pid = netif->pid;
+            gnrc_netif_hdr_set_netif(hdr, netif);
             LL_APPEND(pkt, netif_snip);
         }
         else {
@@ -191,7 +191,7 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
 
             hdr->lqi = rx_info.lqi;
             hdr->rssi = rx_info.rssi;
-            hdr->if_pid = thread_getpid();
+            gnrc_netif_hdr_set_netif(hdr, netif);
             dev->driver->get(dev, NETOPT_PROTO, &pkt->type, sizeof(pkt->type));
 #if ENABLE_DEBUG
             DEBUG("_recv_ieee802154: received packet from %s of length %u\n",

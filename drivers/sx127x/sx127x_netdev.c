@@ -351,7 +351,7 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 
     switch(opt) {
         case NETOPT_STATE:
-            assert(len <= sizeof(netopt_state_t));
+            assert(len == sizeof(netopt_state_t));
             return _set_state(dev, *((const netopt_state_t*) val));
 
         case NETOPT_DEVICE_TYPE:
@@ -721,6 +721,11 @@ void _on_dio3_irq(void *arg)
             break;
         default:
             DEBUG("[sx127x] netdev: sx127x_on_dio3: unknown state");
+            /* at least the related interrupts should be cleared in this case */
+            sx127x_reg_write(dev, SX127X_REG_LR_IRQFLAGS,
+                             SX127X_RF_LORA_IRQFLAGS_VALIDHEADER |
+                             SX127X_RF_LORA_IRQFLAGS_CADDETECTED |
+                             SX127X_RF_LORA_IRQFLAGS_CADDONE);
             break;
     }
 }
