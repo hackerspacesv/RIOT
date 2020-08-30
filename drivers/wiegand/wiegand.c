@@ -36,8 +36,6 @@ void wg_read_d0(void *arg)
 {
   wiegand_t *dev = (wiegand_t *)arg;
 
-  gpio_set(HSSV_ATSAMR21_GPIO);
-
   // Increament bit count for Interrupt connected to D0
   dev->wg_bit_count++;
   // If bit count more than 31, process high bits
@@ -53,7 +51,6 @@ void wg_read_d0(void *arg)
     // D0 represent binary 0, so just left shift card data
     dev->wg_card_temp <<= 1;
   }
-  gpio_clear(HSSV_ATSAMR21_GPIO);
 }
 
 /**
@@ -63,8 +60,6 @@ void wg_read_d0(void *arg)
 void wg_read_d1(void *arg)
 {
   wiegand_t *dev = (wiegand_t *)arg;
-
-  gpio_set(HSSV_ATSAMR21_GPIO);
 
   // Increment bit count for Interrupt connected to D1
   dev->wg_bit_count++;
@@ -85,7 +80,6 @@ void wg_read_d1(void *arg)
     // left shift card data
     dev->wg_card_temp <<= 1;
   }
-  gpio_clear(HSSV_ATSAMR21_GPIO);
 }
 
 /**
@@ -304,8 +298,6 @@ int16_t wg_init(wiegand_t *dev, const wiegand_params_t *params)
   dev->ready = 0;
   dev->last_bit_count = 0;
   dev->conn = params;
-
-  gpio_init(HSSV_ATSAMR21_GPIO, GPIO_OUT);
 
   if(gpio_init_int(
     dev->conn->d0,
