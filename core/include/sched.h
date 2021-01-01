@@ -97,6 +97,8 @@ typedef struct _thread thread_t;
 
 /**
  * @name Thread states supported by RIOT
+ *
+ *       Keep in sync with OpenOCD src/rtos/riot.c
  * @{
  */
 typedef enum {
@@ -135,9 +137,12 @@ typedef enum {
 
 /**
  * @brief   Triggers the scheduler to schedule the next thread
- * @returns 1 if sched_active_thread/sched_active_pid was changed, 0 otherwise.
+ *
+ * @returns     The new thread to schedule if sched_active_thread/sched_active_pid
+ *              was changed,
+ * @returns     NULL if the active thread was not changed.
  */
-int sched_run(void);
+thread_t *sched_run(void);
 
 /**
  * @brief   Set the status of the specified process
@@ -179,19 +184,9 @@ extern volatile unsigned int sched_context_switch_request;
 extern volatile thread_t *sched_threads[KERNEL_PID_LAST + 1];
 
 /**
- *  Currently active thread
- */
-extern volatile thread_t *sched_active_thread;
-
-/**
  *  Number of running (non-terminated) threads
  */
 extern volatile int sched_num_threads;
-
-/**
- *  Process ID of active thread
- */
-extern volatile kernel_pid_t sched_active_pid;
 
 /**
  * List of runqueues per priority level

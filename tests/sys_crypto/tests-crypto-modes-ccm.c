@@ -892,7 +892,7 @@ static const size_t TEST_WYCHEPROOF_28_EXPECTED_LEN = 63;
 
 
 /* Manually created test vectors */
-/* This is neccessary, because no test vectors are published with input length > 256 */
+/* This is necessary, because no test vectors are published with input length > 256 */
 /* Data has been verified against BouncyCastle (.NET Core) and pycryptodome */
 
 static const uint8_t TEST_MANUAL_01_KEY[] = {
@@ -1255,7 +1255,7 @@ static void test_crypto_modes_ccm_decrypt(void)
 }
 
 
-typedef int (*func_ccm_t)(cipher_t *, const uint8_t *, uint32_t,
+typedef int (*func_ccm_t)(const cipher_t *, const uint8_t *, uint32_t,
                           uint8_t, uint8_t, const uint8_t *, size_t,
                           const uint8_t *, size_t, uint8_t *);
 

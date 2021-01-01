@@ -636,17 +636,12 @@ kernel_pid_t gcoap_init(void)
 
 void gcoap_register_listener(gcoap_listener_t *listener)
 {
-    /* Add the listener to the end of the linked list. */
-    gcoap_listener_t *_last = _coap_state.listeners;
-    while (_last->next) {
-        _last = _last->next;
-    }
-
-    listener->next = NULL;
     if (!listener->link_encoder) {
         listener->link_encoder = gcoap_encode_link;
     }
-    _last->next = listener;
+
+    listener->next = _coap_state.listeners;
+    _coap_state.listeners = listener;
 }
 
 int gcoap_req_init(coap_pkt_t *pdu, uint8_t *buf, size_t len,
@@ -680,50 +675,11 @@ int gcoap_req_init(coap_pkt_t *pdu, uint8_t *buf, size_t len,
         res = coap_build_hdr(pdu->hdr, COAP_TYPE_CON, NULL, 0, code, msgid);
     }
 
-    coap_pkt_init(pdu, buf, len - CONFIG_GCOAP_REQ_OPTIONS_BUF, res);
+    coap_pkt_init(pdu, buf, len, res);
     if (path != NULL) {
         res = coap_opt_add_uri_path(pdu, path);
     }
     return (res > 0) ? 0 : res;
-}
-
-/*
- * Assumes pdu.payload_len attribute was reduced in gcoap_xxx_init() to
- * ensure enough space in PDU buffer to write Content-Format option and
- * payload marker here.
- */
-ssize_t gcoap_finish(coap_pkt_t *pdu, size_t payload_len, unsigned format)
-{
-    assert( !(pdu->options_len) ||
-            !(payload_len) ||
-            (format == COAP_FORMAT_NONE) ||
-            (pdu->options[pdu->options_len-1].opt_num < COAP_OPT_CONTENT_FORMAT));
-
-    if (payload_len) {
-        /* determine Content-Format option length */
-        unsigned format_optlen = 1;
-        if (format == COAP_FORMAT_NONE) {
-            format_optlen = 0;
-        }
-        else if (format > 255) {
-            format_optlen = 3;
-        }
-        else if (format > 0) {
-            format_optlen = 2;
-        }
-
-        /* move payload to accommodate option and payload marker */
-        memmove(pdu->payload+format_optlen+1, pdu->payload, payload_len);
-
-        if (format_optlen) {
-            coap_opt_add_uint(pdu, COAP_OPT_CONTENT_FORMAT, format);
-        }
-        *pdu->payload++ = 0xFF;
-    }
-    /* must write option before updating PDU with actual length */
-    pdu->payload_len = payload_len;
-
-    return pdu->payload_len + (pdu->payload - (uint8_t *)pdu->hdr);
 }
 
 size_t gcoap_req_send(const uint8_t *buf, size_t len,
@@ -840,7 +796,7 @@ int gcoap_resp_init(coap_pkt_t *pdu, uint8_t *buf, size_t len, unsigned code)
 
     pdu->options_len = 0;
     pdu->payload     = buf + header_len;
-    pdu->payload_len = len - header_len - CONFIG_GCOAP_RESP_OPTIONS_BUF;
+    pdu->payload_len = len - header_len;
 
     if (coap_get_observe(pdu) == COAP_OBS_REGISTER) {
         /* generate initial notification value */
@@ -869,7 +825,7 @@ int gcoap_obs_init(coap_pkt_t *pdu, uint8_t *buf, size_t len,
                                     memo->token_len, COAP_CODE_CONTENT, msgid);
 
     if (hdrlen > 0) {
-        coap_pkt_init(pdu, buf, len - CONFIG_GCOAP_OBS_OPTIONS_BUF, hdrlen);
+        coap_pkt_init(pdu, buf, len, hdrlen);
 
         uint32_t now       = xtimer_now_usec();
         pdu->observe_value = (now >> GCOAP_OBS_TICK_EXPONENT) & 0xFFFFFF;
@@ -914,8 +870,7 @@ int gcoap_get_resource_list(void *buf, size_t maxlen, uint8_t cf)
 {
     assert(cf == COAP_FORMAT_LINK);
 
-    /* skip the first listener, gcoap itself (we skip /.well-known/core) */
-    gcoap_listener_t *listener = _coap_state.listeners->next;
+    gcoap_listener_t *listener = _coap_state.listeners;
 
     char *out = (char *)buf;
     size_t pos = 0;
@@ -926,7 +881,7 @@ int gcoap_get_resource_list(void *buf, size_t maxlen, uint8_t cf)
     ctx.flags = COAP_LINK_FLAG_INIT_RESLIST;
 
     /* write payload */
-    while (listener) {
+    for (; listener != NULL; listener = listener->next) {
         if (!listener->link_encoder) {
             continue;
         }
@@ -951,8 +906,6 @@ int gcoap_get_resource_list(void *buf, size_t maxlen, uint8_t cf)
                 break;
             }
         }
-
-        listener = listener->next;
     }
 
     return (int)pos;

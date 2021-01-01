@@ -49,12 +49,16 @@
 #define MTD_POWER_UP_WAIT_FOR_ID    (0x0F)
 #endif
 
+#define MTD_64K             (65536ul)
+#define MTD_64K_ADDR_MASK   (0xFFFF)
 #define MTD_32K             (32768ul)
 #define MTD_32K_ADDR_MASK   (0x7FFF)
 #define MTD_4K              (4096ul)
 #define MTD_4K_ADDR_MASK    (0xFFF)
 
 #define MBIT_AS_BYTES       ((1024 * 1024) / 8)
+
+#define MIN(a, b) ((a) > (b) ? (b) : (a))
 
 /**
  * @brief   JEDEC memory manufacturer ID codes.
@@ -74,14 +78,6 @@ static int mtd_spi_nor_read(mtd_dev_t *mtd, void *dest, uint32_t addr, uint32_t 
 static int mtd_spi_nor_write(mtd_dev_t *mtd, const void *src, uint32_t addr, uint32_t size);
 static int mtd_spi_nor_erase(mtd_dev_t *mtd, uint32_t addr, uint32_t size);
 static int mtd_spi_nor_power(mtd_dev_t *mtd, enum mtd_power_state power);
-
-const mtd_desc_t mtd_spi_nor_driver = {
-    .init = mtd_spi_nor_init,
-    .read = mtd_spi_nor_read,
-    .write = mtd_spi_nor_write,
-    .erase = mtd_spi_nor_erase,
-    .power = mtd_spi_nor_power,
-};
 
 static void mtd_spi_acquire(const mtd_spi_nor_t *dev)
 {
@@ -464,7 +460,7 @@ static int mtd_spi_nor_read(mtd_dev_t *mtd, void *dest, uint32_t addr, uint32_t 
     DEBUG("mtd_spi_nor_read: %p, %p, 0x%" PRIx32 ", 0x%" PRIx32 "\n",
           (void *)mtd, dest, addr, size);
     const mtd_spi_nor_t *dev = (mtd_spi_nor_t *)mtd;
-    size_t chipsize = mtd->page_size * mtd->pages_per_sector * mtd->sector_count;
+    uint32_t chipsize = mtd->page_size * mtd->pages_per_sector * mtd->sector_count;
     if (addr > chipsize) {
         return -EOVERFLOW;
     }
@@ -521,6 +517,35 @@ static int mtd_spi_nor_write(mtd_dev_t *mtd, const void *src, uint32_t addr, uin
     return 0;
 }
 
+static int mtd_spi_nor_write_page(mtd_dev_t *mtd, const void *src, uint32_t page, uint32_t offset,
+                                  uint32_t size)
+{
+    const mtd_spi_nor_t *dev = (mtd_spi_nor_t *)mtd;
+
+    DEBUG("mtd_spi_nor_write_page: %p, %p, 0x%" PRIx32 ", 0x%" PRIx32 ", 0x%" PRIx32 "\n",
+          (void *)mtd, src, page, offset, size);
+
+    uint32_t remaining = mtd->page_size - offset;
+    size = MIN(remaining, size);
+
+    be_uint32_t addr_be = byteorder_htonl(page * mtd->page_size + offset);
+
+    mtd_spi_acquire(dev);
+
+    /* write enable */
+    mtd_spi_cmd(dev, dev->params->opcode->wren);
+
+    /* Page program */
+    mtd_spi_cmd_addr_write(dev, dev->params->opcode->page_program, addr_be, src, size);
+
+    /* waiting for the command to complete before returning */
+    wait_for_write_complete(dev, 0);
+
+    mtd_spi_release(dev);
+
+    return size;
+}
+
 static int mtd_spi_nor_erase(mtd_dev_t *mtd, uint32_t addr, uint32_t size)
 {
     DEBUG("mtd_spi_nor_erase: %p, 0x%" PRIx32 ", 0x%" PRIx32 "\n",
@@ -557,6 +582,14 @@ static int mtd_spi_nor_erase(mtd_dev_t *mtd, uint32_t addr, uint32_t size)
             size -= total_size;
             us = dev->params->wait_chip_erase;
         }
+        else if ((dev->params->flag & SPI_NOR_F_SECT_64K) && (size >= MTD_64K) &&
+                 ((addr & MTD_64K_ADDR_MASK) == 0)) {
+            /* 64 KiB blocks can be erased with block erase command */
+            mtd_spi_cmd_addr_write(dev, dev->params->opcode->block_erase_64k, addr_be, NULL, 0);
+            addr += MTD_64K;
+            size -= MTD_64K;
+            us = dev->params->wait_64k_erase;
+        }
         else if ((dev->params->flag & SPI_NOR_F_SECT_32K) && (size >= MTD_32K) &&
                  ((addr & MTD_32K_ADDR_MASK) == 0)) {
             /* 32 KiB blocks can be erased with block erase command */
@@ -571,13 +604,14 @@ static int mtd_spi_nor_erase(mtd_dev_t *mtd, uint32_t addr, uint32_t size)
             mtd_spi_cmd_addr_write(dev, dev->params->opcode->sector_erase, addr_be, NULL, 0);
             addr += MTD_4K;
             size -= MTD_4K;
-            us = dev->params->wait_4k_erase;
+            us = dev->params->wait_sector_erase;
         }
         else {
-            mtd_spi_cmd_addr_write(dev, dev->params->opcode->block_erase, addr_be, NULL, 0);
-            addr += sector_size;
-            size -= sector_size;
-            us = dev->params->wait_sector_erase;
+            /* no suitable erase block found */
+            assert(0);
+
+            mtd_spi_release(dev);
+            return -EINVAL;
         }
 
         /* waiting for the command to complete before continuing */
@@ -619,3 +653,12 @@ static int mtd_spi_nor_power(mtd_dev_t *mtd, enum mtd_power_state power)
 
     return 0;
 }
+
+const mtd_desc_t mtd_spi_nor_driver = {
+    .init = mtd_spi_nor_init,
+    .read = mtd_spi_nor_read,
+    .write = mtd_spi_nor_write,
+    .write_page = mtd_spi_nor_write_page,
+    .erase = mtd_spi_nor_erase,
+    .power = mtd_spi_nor_power,
+};

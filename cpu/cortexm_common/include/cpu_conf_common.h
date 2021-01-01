@@ -63,6 +63,7 @@ extern "C" {
  */
 #ifdef __ARM_FEATURE_CLZ
 #define BITARITHM_LSB_BUILTIN
+#define BITARITHM_HAS_CLZ
 #else
 #define BITARITHM_LSB_LOOKUP
 #endif
@@ -78,7 +79,7 @@ extern "C" {
  *
  * Cortex-M CPUs allow interrupt priorities to be arranged in subgroups,
  * meaning that any interrupts on the same subgroup will not
- * pre-empt each other, but those on a lower sub-priority will run
+ * preempt each other, but those on a lower sub-priority will run
  * only once all on the higher sub-priorities have been completed.
  *
  * The usual practice on Cortex-M is to run the PendSV interrupt
@@ -118,10 +119,10 @@ extern "C" {
  * By default, RIOT runs PendSV on the same interrupt priority with all
  * other interrupts.
  *
- * For efficency (or other reasons), one may want to run the PendSV as
+ * For efficiency (or other reasons), one may want to run the PendSV as
  * the last one, just before returning to the (next) thread.  However,
  * since PendSV triggers the RIOT scheduler _without_ interrupts being
- * disabled, any interrupts that pre-empt the scheduler, including the
+ * disabled, any interrupts that preempt the scheduler, including the
  * timer interrupts, must not call anything that may affect the
  * scheduler, such as mutex or scheduler functions.  With the current
  * design of RIOT, writing interrupt handlers in such a manner is not
@@ -141,7 +142,7 @@ extern "C" {
  * If you want to set this, define it in your `cpu_conf.h`.
  */
 #ifndef CPU_CORTEXM_PENDSV_IRQ_PRIO
-#define CPU_CORTEXM_PENDSV_IRQ_PRIO (CPU_DEFAULT_IRQ_PRIO)
+#define CPU_CORTEXM_PENDSV_IRQ_PRIO (UINT8_MAX)
 #endif
 /** @} */
 

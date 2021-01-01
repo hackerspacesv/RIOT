@@ -38,15 +38,6 @@ extern "C" {
 #define NETOPT_MAX_PACKET_SIZE NETOPT_MAX_PDU_SIZE
 
 /**
- * @brief       A deprecated alias for @ref NETOPT_LINK
- *
- * @deprecated  Please use @ref NETOPT_LINK instead of
- *              `NETOPT_LINK_CONNECTED`. It will be removed after the
- *              2020.07 release at the latest.
- */
-#define NETOPT_LINK_CONNECTED NETOPT_LINK
-
-/**
  * @brief   Global list of configuration options available throughout the
  *          network stack, e.g. by netdev and netapi
  *
@@ -195,6 +186,22 @@ typedef enum {
      * @brief   (uint16_t) maximum protocol data unit
      */
     NETOPT_MAX_PDU_SIZE,
+    /**
+     * @brief   (uint16_t) protocol data unit size
+     *
+     * When set, fixes the number of bytes to be received. This is required for
+     * MAC layers with implicit header mode (no packet length information in
+     * PDDU) and predictable packet length (e.g LoRaWAN beacons). The device
+     * driver implementation should attempt to read exactly the expected number
+     * of bytes (possibly filling it up with garbage data if the payload is
+     * smaller).
+     *
+     * When get, returns the number of expected bytes for the next reception.
+     *
+     * In some MAC layers it will only be effective if used in conjunction with
+     * @ref NETOPT_FIXED_HEADER
+     */
+    NETOPT_PDU_SIZE,
     /**
      * @brief   (@ref netopt_enable_t) frame preloading
      *

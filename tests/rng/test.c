@@ -61,6 +61,8 @@ static void test_init(char *name)
         puts("Musl C PRNG.\n");
 #elif MODULE_PRNG_SHA1PRNG
         puts("SHA1 PRNG.\n");
+#elif MODULE_PRNG_SHA256PRNG
+        puts("SHA256 PRNG.\n");
 #elif MODULE_PRNG_TINYMT32
         puts("Tiny Mersenne Twister PRNG.\n");
 #elif MODULE_PRNG_XORSHIFT
@@ -387,7 +389,7 @@ void test_entropy(uint32_t samples)
     /* Use 'fmt/print_float' to work on all platforms (atmega)
      * Stdout should be flushed before to prevent garbled output. */
     printf("Calculated ");
-#ifdef MODULE_NEWLIB
+#if defined(MODULE_NEWLIB) || defined(MODULE_PICOLIBC)
     /* no fflush on msp430 */
     fflush(stdout);
 #endif

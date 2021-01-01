@@ -8,7 +8,6 @@ BOARD_BLACKLIST :=  arduino-duemilanove \
                     arduino-uno \
                     atmega256rfr2-xpro \
                     atmega328p \
-                    chronos \
                     derfmega128 \
                     derfmega256 \
                     f4vi1 \
@@ -24,8 +23,6 @@ BOARD_BLACKLIST :=  arduino-duemilanove \
                     stm32f3discovery \
                     telosb \
                     waspmote-pro \
-                    wsn430-v1_3b \
-                    wsn430-v1_4 \
                     z1 \
                     #
 

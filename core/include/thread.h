@@ -133,6 +133,16 @@
 extern "C" {
 #endif
 
+#if defined(DEVELHELP) && !defined(CONFIG_THREAD_NAMES)
+/**
+ * @brief   This global macro enable storage of thread names to help developers.
+ *
+ *          To activate it set environment variable `THREAD_NAMES=1`, or use Kconfig.
+ *          It is automatically enabled if `DEVELHELP` is.
+ */
+#define CONFIG_THREAD_NAMES
+#endif
+
 /**
  * @brief Prototype for a thread entry function
  */
@@ -172,9 +182,15 @@ struct _thread {
     || defined(MODULE_MPU_STACK_GUARD) || defined(DOXYGEN)
     char *stack_start;              /**< thread's stack start address   */
 #endif
-#if defined(DEVELHELP) || defined(DOXYGEN)
+#if defined(CONFIG_THREAD_NAMES) || defined(DOXYGEN)
     const char *name;               /**< thread's name                  */
+#endif
+#if defined(DEVELHELP) || defined(DOXYGEN)
     int stack_size;                 /**< thread's stack size            */
+#endif
+/* enable TLS only when Picolibc is compiled with TLS enabled */
+#ifdef PICOLIBC_TLS
+    void *tls;                      /**< thread local storage ptr */
 #endif
 #ifdef HAVE_THREAD_ARCH_T
     thread_arch_t arch;             /**< architecture dependent part    */
@@ -351,12 +367,29 @@ kernel_pid_t thread_create(char *stack,
 
 /**
  * @brief       Retrieve a thread control block by PID.
+ * @pre         @p pid is valid
+ * @param[in]   pid   Thread to retrieve.
+ * @return      `NULL` if the PID is invalid or there is no such thread.
+ */
+static inline thread_t *thread_get_unchecked(kernel_pid_t pid)
+{
+    return (thread_t *)sched_threads[pid];
+}
+
+/**
+ * @brief       Retrieve a thread control block by PID.
  * @details     This is a bound-checked variant of accessing `sched_threads[pid]` directly.
  *              If you know that the PID is valid, then don't use this function.
  * @param[in]   pid   Thread to retrieve.
  * @return      `NULL` if the PID is invalid or there is no such thread.
  */
-volatile thread_t *thread_get(kernel_pid_t pid);
+static inline thread_t *thread_get(kernel_pid_t pid)
+{
+    if (pid_is_valid(pid)) {
+        return thread_get_unchecked(pid);
+    }
+    return NULL;
+}
 
 /**
  * @brief Returns the status of a process
@@ -444,6 +477,20 @@ static inline kernel_pid_t thread_getpid(void)
 }
 
 /**
+ * @brief   Returns a pointer to the Thread Control Block of the currently
+ *          running thread
+ *
+ * @return  Pointer to the TCB of the currently running thread, or `NULL` if
+ *          no thread is running
+ */
+static inline thread_t *thread_get_active(void)
+{
+    extern volatile thread_t *sched_active_thread;
+
+    return (thread_t *)sched_active_thread;
+}
+
+/**
  * @brief   Gets called upon thread creation to set CPU registers
  *
  * @param[in] task_func     First function to call within the thread
@@ -489,11 +536,11 @@ const char *thread_getname(kernel_pid_t pid);
  *
  * Only works if the thread was created with the flag THREAD_CREATE_STACKTEST.
  *
- * @param[in] stack the stack you want to measure. try `sched_active_thread->stack_start`
+ * @param[in] stack the stack you want to measure. Try `thread_get_active()->stack_start`
  *
  * @return          the amount of unused space of the thread's stack
  */
-uintptr_t thread_measure_stack_free(char *stack);
+uintptr_t thread_measure_stack_free(const char *stack);
 #endif /* DEVELHELP */
 
 /**

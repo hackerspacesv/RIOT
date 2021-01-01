@@ -77,12 +77,12 @@ static size_t _result_buf_len;
 static uint8_t reqbuf[CONFIG_GCOAP_PDU_BUF_SIZE] = {0};
 
 static mutex_t _mutex = MUTEX_INIT;
-static volatile thread_t *_waiter;
+static thread_t *_waiter;
 
 static void _lock(void)
 {
     mutex_lock(&_mutex);
-    _waiter = sched_active_thread;
+    _waiter = thread_get_active();
 }
 
 static int _sync(void)
@@ -113,15 +113,15 @@ static void _on_lookup(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
         unsigned ct = coap_get_content_type(pdu);
         if (ct != COAP_FORMAT_LINK) {
             DEBUG("cord_lc: unsupported content format: %u\n", ct);
-            thread_flags_set((thread_t *)_waiter, flag);
+            thread_flags_set(_waiter, flag);
         }
         if (pdu->payload_len == 0) {
             flag = FLAG_NORSC;
-            thread_flags_set((thread_t *)_waiter, flag);
+            thread_flags_set(_waiter, flag);
         }
         if (pdu->payload_len >= _result_buf_len) {
             flag = FLAG_OVERFLOW;
-            thread_flags_set((thread_t *)_waiter, flag);
+            thread_flags_set(_waiter, flag);
         }
         memcpy(_result_buf, pdu->payload, pdu->payload_len);
         memset(_result_buf + pdu->payload_len, 0,
@@ -132,7 +132,7 @@ static void _on_lookup(const gcoap_request_memo_t *memo, coap_pkt_t *pdu,
         flag = FLAG_TIMEOUT;
     }
 
-    thread_flags_set((thread_t *)_waiter, flag);
+    thread_flags_set(_waiter, flag);
 }
 
 static ssize_t _add_filters_to_lookup(coap_pkt_t *pkt, cord_lc_filter_t *filters)
@@ -186,7 +186,7 @@ static ssize_t _lookup_raw(const cord_lc_rd_t *rd, unsigned content_format,
     coap_hdr_set_type(pkt.hdr, COAP_TYPE_CON);
     coap_opt_add_uint(&pkt, COAP_OPT_ACCEPT, content_format);
 
-    pkt_len = gcoap_finish(&pkt, 0, COAP_FORMAT_NONE);
+    pkt_len = coap_opt_finish(&pkt, COAP_OPT_FINISH_NONE);
     if (pkt_len < 0) {
         return CORD_LC_ERR;
     }
@@ -228,7 +228,7 @@ end:
         _result_buf = NULL;
         _result_buf_len = 0;
     }
-    thread_flags_set((thread_t *)_waiter, flag);
+    thread_flags_set(_waiter, flag);
 }
 
 static int _send_rd_init_req(coap_pkt_t *pkt, const sock_udp_ep_t *remote,
@@ -244,9 +244,9 @@ static int _send_rd_init_req(coap_pkt_t *pkt, const sock_udp_ep_t *remote,
     coap_hdr_set_type(pkt->hdr, COAP_TYPE_CON);
     coap_opt_add_uri_query(pkt, "rt", "core.rd-lookup-*");
 
-    ssize_t pkt_len = gcoap_finish(pkt, 0, COAP_FORMAT_NONE);
+    ssize_t pkt_len = coap_opt_finish(pkt, COAP_OPT_FINISH_NONE);
     if (pkt_len < 0) {
-        DEBUG("cord_lc: error gcoap_finish() %zd\n", pkt_len);
+        DEBUG("cord_lc: error coap_opt_finish() %zd\n", pkt_len);
         return CORD_LC_ERR;
     }
 

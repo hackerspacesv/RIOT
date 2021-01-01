@@ -16,6 +16,7 @@
  */
 
 #include <stdio.h>
+#include <assert.h>
 
 #include "thread.h"
 #include "sched.h"
@@ -32,12 +33,10 @@
 #endif
 
 /* list of states copied from tcb.h */
-static const char *state_names[] = {
-    [STATUS_RUNNING] = "running",
-    [STATUS_PENDING] = "pending",
+static const char *state_names[STATUS_NUMOF] = {
     [STATUS_STOPPED] = "stopped",
-    [STATUS_SLEEPING] = "sleeping",
     [STATUS_ZOMBIE] = "zombie",
+    [STATUS_SLEEPING] = "sleeping",
     [STATUS_MUTEX_BLOCKED] = "bl mutex",
     [STATUS_RECEIVE_BLOCKED] = "bl rx",
     [STATUS_SEND_BLOCKED] = "bl send",
@@ -46,7 +45,31 @@ static const char *state_names[] = {
     [STATUS_FLAG_BLOCKED_ALL] = "bl allfl",
     [STATUS_MBOX_BLOCKED] = "bl mbox",
     [STATUS_COND_BLOCKED] = "bl cond",
+    [STATUS_RUNNING] = "running",
+    [STATUS_PENDING] = "pending",
 };
+
+#define STATE_NAME_UNKNOWN "unknown"
+
+/**
+ * Convert a thread state code to a human readable string.
+ *
+ * This function should be used instead of a direct array lookup: if ever
+ * state_names and the actual states in tcb.h get out of sync, a hole will be
+ * left in the lookup table. If compiling with NDEBUG not defined, this will
+ * generate an assertion which should make it clear that the table needs
+ * updating. With NDEBUG, any missing code will result in the string "unknown"
+ * (while direct access would return a NULL, possibly causing a crash.)
+ */
+static const char *state_to_string(thread_status_t state)
+{
+    const char *name = state_names[state] ? state_names[state] : NULL;
+
+    assert(name != NULL); /* if compiling with assertions, this is an error that
+                            indicates that the table above is incomplete */
+
+    return (name != NULL) ? name : STATE_NAME_UNKNOWN;
+}
 
 /**
  * @brief Prints a list of running threads including stack usage to stdout.
@@ -59,7 +82,7 @@ void ps(void)
 #endif
 
     printf("\tpid | "
-#ifdef DEVELHELP
+#ifdef CONFIG_THREAD_NAMES
             "%-21s| "
 #endif
             "%-9sQ | pri "
@@ -70,7 +93,7 @@ void ps(void)
            "| runtime  | switches"
 #endif
            "\n",
-#ifdef DEVELHELP
+#ifdef CONFIG_THREAD_NAMES
            "name",
 #endif
            "state");
@@ -92,7 +115,7 @@ void ps(void)
 #ifdef MODULE_SCHEDSTATISTICS
     uint64_t rt_sum = 0;
     for (kernel_pid_t i = KERNEL_PID_FIRST; i <= KERNEL_PID_LAST; i++) {
-        thread_t *p = (thread_t *)sched_threads[i];
+        thread_t *p = thread_get(i);
         if (p != NULL) {
             rt_sum += sched_pidlist[i].runtime_ticks;
         }
@@ -100,11 +123,11 @@ void ps(void)
 #endif /* MODULE_SCHEDSTATISTICS */
 
     for (kernel_pid_t i = KERNEL_PID_FIRST; i <= KERNEL_PID_LAST; i++) {
-        thread_t *p = (thread_t *)sched_threads[i];
+        thread_t *p = thread_get(i);
 
         if (p != NULL) {
             thread_status_t state = p->status;                                     /* copy state */
-            const char *sname = state_names[state];                                /* get state name */
+            const char *sname = state_to_string(state);                            /* get state name */
             const char *queued = &queued_name[(int)(state >= STATUS_ON_RUNQUEUE)]; /* get queued flag */
 #ifdef DEVELHELP
             int stacksz = p->stack_size;                                           /* get stack size */
@@ -121,7 +144,7 @@ void ps(void)
             unsigned switches = sched_pidlist[i].schedules;
 #endif
             printf("\t%3" PRIkernel_pid
-#ifdef DEVELHELP
+#ifdef CONFIG_THREAD_NAMES
                    " | %-20s"
 #endif
                    " | %-8s %.1s | %3i"
@@ -133,7 +156,7 @@ void ps(void)
 #endif
                    "\n",
                    p->pid,
-#ifdef DEVELHELP
+#ifdef CONFIG_THREAD_NAMES
                    p->name,
 #endif
                    sname, queued, p->priority

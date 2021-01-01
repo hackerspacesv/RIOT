@@ -48,6 +48,7 @@ export PYTHONPATH            # Python default search path for module filesi, wit
 export FEATURES_REQUIRED     # List of required features by the application
 export FEATURES_PROVIDED     # List of provided features by the board
 export FEATURES_OPTIONAL     # List of nice to have features
+export FEATURES_USED         # List of features used
 # TOOLCHAINS_SUPPORTED       # List of supported toolchains by an MCU (gnu/llvm/...).
 # TOOLCHAINS_BLACKLISTED     # List of unspported toolchains for a module or an application.
 export TOOLCHAIN             # Base build toolchain, i.e. GNU or LLVM
@@ -63,14 +64,13 @@ export CXXUWFLAGS            # (Patterns of) flags in CFLAGS that should not be 
 export CXXEXFLAGS            # Additional flags that should be passed to CXX.
 export CCASUWFLAGS           # (Patterns of) flags in CFLAGS that should not be passed to CCAS.
 export CCASEXFLAGS           # Additional flags that should be passed to CCAS.
-export AR                    # The command to create the object file archives.
-export ARFLAGS               # Command-line options to pass to AR, default `rcs`.
 export AS                    # The assembler.
 export ASFLAGS               # Flags for the assembler.
 export LINK                  # The command used to link the files. Must take the same parameters as GCC, i.e. "ld" won't work.
 export NM                    # The command used to list symbols from objet files
 export RANLIB                # The command used to generate an index to the contents of an archive
 # LINKFLAGS                  # Flags to supply in the linking step.
+export ARCHIVES              # List of archives to add in the linking step
 export LTOFLAGS              # extra CFLAGS for compiling with link time optimization
 export OBJCOPY               # The command used to create the HEXFILE and BINFILE.
 export OFLAGS                # The parameter for OBJCOPY, e.g. to strip the debug information.
@@ -91,6 +91,8 @@ export WPEDANTIC             # Issue all (extensive) compiler warnings demanded 
 export FLASH_ADDR            # Define an offset to flash code into ROM memory.
 # TERMPROG                   # The command to call on "make term".
 # TERMFLAGS                  # Additional parameters to supply to TERMPROG.
+# TERMLOG                    # Optional file to log "make term" output to.
+# TERMTEE                    # Optional pipe to redirect "make term" output. Default: '| tee -a ${TERMLOG}' when TERMLOG is defined else undefined.
 # PORT                       # The port to connect the TERMPROG to.
 export ELFFILE               # The unstripped result of the compilation.
 export HEXFILE               # The 'intel hex' stripped result of the compilation.
@@ -115,3 +117,4 @@ export LAZYSPONGE_FLAGS      # Parameters supplied to LAZYSPONGE.
 export AFL_FLAGS             # Additional command-line flags passed to afl during fuzzing.
 
 # LOG_LEVEL                  # Logging level as integer (NONE: 0, ERROR: 1, WARNING: 2, INFO: 3, DEBUG: 4, default: 3)
+# KCONFIG_ADD_CONFIG         # List of .config files to be merged used by Boards and CPUs. See kconfig.mk

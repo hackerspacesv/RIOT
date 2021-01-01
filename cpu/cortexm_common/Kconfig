@@ -4,10 +4,19 @@
 # General Public License v2.1. See the file LICENSE in the top level
 # directory for more details.
 
+config MODULE_CORTEXM_COMMON
+    bool
+    default y if CPU_CORE_CORTEX_M
+    depends on TEST_KCONFIG
+    select MODULE_PERIPH
+    help
+        Common code for Cortex-M cores.
+
 config CPU_ARCH_ARMV6M
     bool
     select HAS_ARCH_ARM
     select HAS_ARCH_32BIT
+    select HAS_NO_IDLE_THREAD
 
 config CPU_ARCH_ARMV7M
     bool
@@ -30,7 +39,9 @@ config CPU_CORE_CORTEX_M
     bool
     select HAS_CPU_CORE_CORTEXM
     select HAS_PERIPH_PM
+    select HAS_PUF_SRAM
     select HAS_CPP
+    select HAS_LIBSTDCPP
     select HAS_CPU_CHECK_ADDRESS
     select HAS_SSP
     select HAS_CORTEXM_SVC
@@ -88,11 +99,6 @@ config HAS_CPU_CORE_CORTEXM
     help
         Indicates that the current CPU has an ARM Cortex-M core.
 
-config HAS_ARCH_ARM
-    bool
-    help
-        Indicates that the current architecture is ARM.
-
 config HAS_CORTEXM_FPU
     bool
     help
@@ -107,3 +113,11 @@ config HAS_CORTEXM_SVC
     bool
     help
         Indicates that ARM Cortex-M Supervisor Calls are available.
+
+config MODULE_CORTEXM_FPU
+    bool "Cortex-M Floating Point Unit (FPU) support"
+    default y
+    depends on HAS_CORTEXM_FPU
+    depends on TEST_KCONFIG
+
+rsource "periph/Kconfig"

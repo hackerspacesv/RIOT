@@ -22,6 +22,11 @@ config HAS_ARCH_32BIT
     help
         Indicates that the CPU has a 32-bits architecture.
 
+config HAS_ARCH_ARM
+    bool
+    help
+        Indicates that the current architecture is ARM.
+
 config HAS_ARDUINO
     bool
     help
@@ -42,11 +47,6 @@ config HAS_BOOTLOADER_ARDUINO
     help
         Indicates that the Arduino bootloader is used.
 
-config HAS_BOOTLOADER_NRFUTIL
-    bool
-    help
-        Indicates that the NRF Util bootloader is used.
-
 config HAS_CPP
     bool
     help
@@ -66,6 +66,11 @@ config HAS_ETHERNET
     bool
     help
         Indicates that Ethernet connectivity is present.
+
+config HAS_LIBSTDCPP
+    bool
+    help
+        Indicates that in addition to C++ support an libstdc++ is available.
 
 config HAS_NO_IDLE_THREAD
     bool
@@ -138,6 +143,19 @@ config HAS_PERIPH_GPIO_IRQ
         Indicates that the GPIO peripheral supports external interrupts is
         present.
 
+config HAS_PERIPH_GPIO_FAST_READ
+    bool
+    help
+	Indicates that the GPIO peripheral supports a mode in which pin read
+	operations are faster, usually with a tradeoff against a different
+	property.
+
+config HAS_PERIPH_GPIO_TAMPER_WAKE
+    bool
+    help
+        Indicates that Tamper Detection can be used to wake the CPU from
+        Deep Sleep.
+
 config HAS_PERIPH_HWRNG
     bool
     help
@@ -174,6 +192,11 @@ config HAS_PERIPH_MCG
     bool
     help
         Indicates that an MCG peripheral is present.
+
+config HAS_PERIPH_PLIC
+    bool
+    help
+        Indicates that a RISC-V Platform-local Interrupt Controller (PLIC) peripheral is present.
 
 config HAS_PERIPH_PM
     bool
@@ -250,6 +273,11 @@ config HAS_PERIPH_UART_NONBLOCKING
     bool
     help
         Indicates that the UART peripheral allows non-blocking operations.
+
+config HAS_PERIPH_UART_RECONFIGURE
+    bool
+    help
+        Indicates that the UART pins can be re-configured as GPIOs.
 
 config HAS_PERIPH_USBDEV
     bool

@@ -13,3 +13,6 @@ rsource "gcoap/Kconfig"
 rsource "nanocoap/Kconfig"
 
 endmenu # CoAP
+
+rsource "cord/Kconfig"
+rsource "dhcpv6/Kconfig"

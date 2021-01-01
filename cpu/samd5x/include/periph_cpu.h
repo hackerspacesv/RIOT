@@ -83,6 +83,19 @@ enum {
  */
 #define SPI_HWCS(x)     (UINT_MAX - 1)
 
+#ifndef DOXYGEN
+#define HAVE_ADC_RES_T
+typedef enum {
+    ADC_RES_6BIT  = 0xff,                       /**< not supported */
+    ADC_RES_8BIT  = ADC_CTRLB_RESSEL_8BIT,      /**< ADC resolution: 8 bit */
+    ADC_RES_10BIT = ADC_CTRLB_RESSEL_10BIT,     /**< ADC resolution: 10 bit */
+    ADC_RES_12BIT = ADC_CTRLB_RESSEL_12BIT,     /**< ADC resolution: 12 bit */
+    ADC_RES_14BIT = 0xfe,                       /**< not supported */
+    ADC_RES_16BIT = 0xfd                        /**< not supported */
+} adc_res_t;
+/** @} */
+#endif /* DOXYGEN */
+
 /**
  * @brief   The MCU has a 12 bit DAC
  */
@@ -102,6 +115,15 @@ enum {
 #define RTT_MIN_FREQUENCY   (RTT_CLOCK_FREQUENCY / 1024U) /* in Hz */
 #define RTT_MAX_FREQUENCY   (RTT_CLOCK_FREQUENCY)         /* in Hz */
 /** @} */
+
+/**
+ * @brief   RTC input pins that can be used for tamper detection and
+ *          wake from Deep Sleep
+ */
+static const gpio_t rtc_tamper_pins[RTC_NUM_OF_TAMPERS] = {
+    GPIO_PIN(PB, 0), GPIO_PIN(PB, 2), GPIO_PIN(PA, 2),
+    GPIO_PIN(PC, 0), GPIO_PIN(PC, 1)
+};
 
 #ifdef __cplusplus
 }

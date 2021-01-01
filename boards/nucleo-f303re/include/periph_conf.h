@@ -21,7 +21,18 @@
 #ifndef PERIPH_CONF_H
 #define PERIPH_CONF_H
 
+/* This board provides an LSE */
+#ifndef CONFIG_BOARD_HAS_LSE
+#define CONFIG_BOARD_HAS_LSE    1
+#endif
+
+/* This board provides an HSE */
+#ifndef CONFIG_BOARD_HAS_HSE
+#define CONFIG_BOARD_HAS_HSE    1
+#endif
+
 #include "periph_cpu.h"
+#include "f1f3/cfg_clock_default.h"
 #include "cfg_timer_tim2.h"
 
 #ifdef __cplusplus
@@ -29,32 +40,25 @@ extern "C" {
 #endif
 
 /**
- * @name    Clock settings
+ * @name    ADC configuration
  *
- * @note    This is auto-generated from
- *          `cpu/stm32_common/dist/clk_conf/clk_conf.c`
+ * Note that we do not configure all ADC channels,
+ * and not in the STM32F334 order.  Instead, we
+ * just define 6 ADC channels, for the Nucleo
+ * Arduino header pins A0-A5
+ *
  * @{
  */
-/* give the target core clock (HCLK) frequency [in Hz],
- * maximum: 72MHz */
-#define CLOCK_CORECLOCK     (72000000U)
-/* 0: no external high speed crystal available
- * else: actual crystal frequency [in Hz] */
-#define CLOCK_HSE           (8000000U)
-/* 0: no external low speed crystal available,
- * 1: external crystal available (always 32.768kHz) */
-#define CLOCK_LSE           (1)
-/* peripheral clock setup */
-#define CLOCK_AHB_DIV       RCC_CFGR_HPRE_DIV1
-#define CLOCK_AHB           (CLOCK_CORECLOCK / 1)
-#define CLOCK_APB1_DIV      RCC_CFGR_PPRE1_DIV2     /* max 36MHz */
-#define CLOCK_APB1          (CLOCK_CORECLOCK / 2)
-#define CLOCK_APB2_DIV      RCC_CFGR_PPRE2_DIV1     /* max 72MHz */
-#define CLOCK_APB2          (CLOCK_CORECLOCK / 1)
+static const adc_conf_t adc_config[] = {
+    { .pin = GPIO_PIN(PORT_A, 0), .dev = 0, .chan =  1 }, /* ADC1_IN1,  fast */
+    { .pin = GPIO_PIN(PORT_A, 1), .dev = 0, .chan =  2 }, /* ADC1_IN2,  fast */
+    { .pin = GPIO_PIN(PORT_A, 4), .dev = 1, .chan =  1 }, /* ADC2_IN1,  fast */
+    { .pin = GPIO_PIN(PORT_B, 0), .dev = 2, .chan = 12 }, /* ADC3_IN12, slow */
+    { .pin = GPIO_PIN(PORT_C, 1), .dev = 1, .chan =  7 }, /* ADC12_IN7, slow */
+    { .pin = GPIO_PIN(PORT_C, 0), .dev = 1, .chan =  6 }, /* ADC12_IN6, slow */
+};
 
-/* PLL factors */
-#define CLOCK_PLL_PREDIV     (1)
-#define CLOCK_PLL_MUL        (9)
+#define ADC_NUMOF           ARRAY_SIZE(adc_config)
 /** @} */
 
 /**
@@ -123,28 +127,8 @@ static const pwm_conf_t pwm_config[] = {
 
 /**
  * @name   SPI configuration
- *
- * @note    The spi_divtable is auto-generated from
- *          `cpu/stm32_common/dist/spi_divtable/spi_divtable.c`
  * @{
  */
-static const uint8_t spi_divtable[2][5] = {
-    {       /* for APB1 @ 36000000Hz */
-        7,  /* -> 140625Hz */
-        6,  /* -> 281250Hz */
-        4,  /* -> 1125000Hz */
-        2,  /* -> 4500000Hz */
-        1   /* -> 9000000Hz */
-    },
-    {       /* for APB2 @ 72000000Hz */
-        7,  /* -> 281250Hz */
-        7,  /* -> 281250Hz */
-        5,  /* -> 1125000Hz */
-        3,  /* -> 4500000Hz */
-        2   /* -> 9000000Hz */
-    }
-};
-
 static const spi_conf_t spi_config[] = {
     {
         .dev      = SPI1,

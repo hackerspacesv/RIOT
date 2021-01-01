@@ -8,10 +8,10 @@ BOARD_INSUFFICIENT_MEMORY := \
     atmega1284p \
     atmega328p \
     b-l072z-lrwan1 \
-    blackpill-128kib \
     blackpill \
-    bluepill-128kib \
+    blackpill-128kib \
     bluepill \
+    bluepill-128kib \
     calliope-mini \
     cc2650-launchpad \
     cc2650stk \
@@ -51,8 +51,6 @@ BOARD_INSUFFICIENT_MEMORY := \
     stm32l0538-disco \
     telosb \
     waspmote-pro \
-    wsn430-v1_3b \
-    wsn430-v1_4 \
     yunjia-nrf51822 \
     z1 \
     #

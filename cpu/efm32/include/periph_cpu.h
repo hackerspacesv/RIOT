@@ -20,6 +20,7 @@
 #ifndef PERIPH_CPU_H
 #define PERIPH_CPU_H
 
+#include "kernel_defines.h"
 #include "mutex.h"
 
 #include "cpu_conf.h"
@@ -92,6 +93,11 @@ typedef struct {
  * @brief   Length of CPU ID in octets.
  */
 #define CPUID_LEN           (8U)
+
+/**
+ * @brief   CPU Frequency Define
+ */
+#define CLOCK_CORECLOCK     SystemCoreClock
 
 #if defined(DAC_COUNT) && DAC_COUNT > 0
 /**
@@ -348,16 +354,26 @@ typedef struct {
  * @{
  */
 typedef struct {
-    TIMER_TypeDef *dev;     /**< Timer device used */
+    void *dev;              /**< TIMER_TypeDef or LETIMER_TypeDef device used */
     CMU_Clock_TypeDef cmu;  /**< the device CMU channel */
 } timer_dev_t;
 
 typedef struct {
-    timer_dev_t prescaler;  /**< the lower numbered neighboring timer */
+    timer_dev_t prescaler;  /**< the lower neighboring timer (not initialized for LETIMER) */
     timer_dev_t timer;      /**< the higher numbered timer */
     IRQn_Type irq;          /**< number of the higher timer IRQ channel */
+    uint8_t channel_numof;       /**< number of channels per timer */
 } timer_conf_t;
 /** @} */
+
+
+/**
+ * @brief   Use LETIMER as the base timer for XTIMER
+ */
+#ifndef CONFIG_EFM32_XTIMER_USE_LETIMER
+#define CONFIG_EFM32_XTIMER_USE_LETIMER   0
+#endif
+
 
 /**
  * @brief   UART device configuration.

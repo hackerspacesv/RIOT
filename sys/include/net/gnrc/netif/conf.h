@@ -32,18 +32,6 @@ extern "C" {
 #endif
 
 /**
- * @brief   Single interface optimizations
- *
- *          Define to 1 to allow GNRC optimizations when only one interface
- *          is available.
- *
- * @note    This MUST NOT be enabled if there's more than one interface.
- */
-#if DOXYGEN
-#define GNRC_NETIF_SINGLE
-#endif
-
-/**
  * @brief   Default priority for network interface threads
  */
 #ifndef GNRC_NETIF_PRIO
@@ -64,6 +52,30 @@ extern "C" {
  */
 #ifndef CONFIG_GNRC_NETIF_MSG_QUEUE_SIZE_EXP
 #define CONFIG_GNRC_NETIF_MSG_QUEUE_SIZE_EXP  (4U)
+#endif
+
+/**
+ * @brief       Packet queue pool size for all network interfaces
+ *
+ * @note        With @ref net_gnrc_sixlowpan_frag the queue should fit at least
+ *              all fragments of the minimum MTU.
+ * @see         net_gnrc_netif_pktq
+ */
+#ifndef CONFIG_GNRC_NETIF_PKTQ_POOL_SIZE
+#define CONFIG_GNRC_NETIF_PKTQ_POOL_SIZE      (16U)
+#endif
+
+/**
+ * @brief       Time in microseconds for when to try send a queued packet at the
+ *              latest
+ *
+ * Set to -1 to deactivate dequeing by timer. For this it has to be ensured that
+ * none of the notifications by the driver are missed!
+ *
+ * @see         net_gnrc_netif_pktq
+ */
+#ifndef CONFIG_GNRC_NETIF_PKTQ_TIMER_US
+#define CONFIG_GNRC_NETIF_PKTQ_TIMER_US       (5000U)
 #endif
 
 /**

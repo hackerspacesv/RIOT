@@ -13,7 +13,7 @@
  * @{
  *
  * @file
- * @brief       ztimer core functinality
+ * @brief       ztimer core functionality
  *
  * This file contains ztimer's main API implementation and functionality
  * present in all ztimer clocks (most notably multiplexing ant extension).
@@ -84,8 +84,8 @@ void ztimer_set(ztimer_clock_t *clock, ztimer_t *timer, uint32_t val)
     }
 
     /* optionally subtract a configurable adjustment value */
-    if (val > clock->adjust) {
-        val -= clock->adjust;
+    if (val > clock->adjust_set) {
+        val -= clock->adjust_set;
     }
     else {
         val = 0;
@@ -296,7 +296,13 @@ static void _ztimer_update(ztimer_clock_t *clock)
             clock->ops->set(clock, clock->list.next->offset);
         }
         else {
-            clock->ops->cancel(clock);
+            if (IS_USED(MODULE_ZTIMER_NOW64)) {
+                /* ensure there's at least one ISR per half period */
+                clock->ops->set(clock, clock->max_value >> 1);
+            }
+            else {
+                clock->ops->cancel(clock);
+            }
         }
     }
 }

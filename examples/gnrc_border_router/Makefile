@@ -11,8 +11,8 @@ RIOTBASE ?= $(CURDIR)/../..
 UPLINK ?= ethos
 
 # Check if the selected Uplink is valid
-ifeq (,$(filter ethos slip wifi,$(UPLINK)))
-  $(error Supported uplinks are `ethos`, `slip` and `wifi`)
+ifeq (,$(filter ethos slip cdc-ecm wifi,$(UPLINK)))
+  $(error Supported uplinks are `ethos`, `slip`, `cdc-ecm` and `wifi`)
 endif
 
 # Set the SSID and password of your WiFi network here
@@ -39,7 +39,8 @@ USEMODULE += ps
 # Optionally include DNS support. This includes resolution of names at an
 # upstream DNS server and the handling of RDNSS options in Router Advertisements
 # to auto-configure that upstream DNS server.
-#USEMODULE += sock_dns
+#USEMODULE += sock_dns              # include DNS client
+#USEMODULE += gnrc_ipv6_nib_dns     # include RDNSS option handling
 
 # When using a WiFi uplink we should use DHCPv6
 ifeq (wifi,$(UPLINK))
@@ -89,6 +90,8 @@ ifeq (,$(filter native,$(BOARD)))
     # ethos baudrate can be configured from make command
     ETHOS_BAUDRATE ?= 115200
     include $(CURDIR)/Makefile.ethos.conf
+  else ifeq (cdc-ecm,$(UPLINK))
+    include $(CURDIR)/Makefile.cdc-ecm.conf
   else ifeq (wifi,$(UPLINK))
     # SSID and Password need to be configured
     include $(CURDIR)/Makefile.wifi.conf

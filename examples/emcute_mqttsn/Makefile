@@ -11,8 +11,7 @@ RIOTBASE ?= $(CURDIR)/../..
 # NOTE: 6LoWPAN will be included if IEEE802.15.4 devices are present
 USEMODULE += gnrc_netdev_default
 USEMODULE += auto_init_gnrc_netif
-# Specify the mandatory networking modules for IPv6 and UDP
-USEMODULE += gnrc_sock_udp
+# Specify the mandatory networking modules for IPv6
 USEMODULE += gnrc_ipv6_default
 # Include MQTT-SN
 USEMODULE += emcute
@@ -22,14 +21,13 @@ USEMODULE += shell_commands
 USEMODULE += ps
 # For testing we also include the ping6 command and some stats
 USEMODULE += gnrc_icmpv6_echo
+# Optimize network stack to for use with a single network interface
+USEMODULE += gnrc_netif_single
 
 # Allow for env-var-based override of the nodes name (EMCUTE_ID)
 ifneq (,$(EMCUTE_ID))
   CFLAGS += -DEMCUTE_ID=\"$(EMCUTE_ID)\"
 endif
-
-# Optimize network stack to for use with a single network interface
-CFLAGS += -DGNRC_NETIF_SINGLE
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the

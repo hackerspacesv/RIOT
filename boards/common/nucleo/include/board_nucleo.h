@@ -32,8 +32,12 @@ extern "C" {
  * @name    Xtimer configuration
  * @{
  */
-#if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0) && \
+#if (defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0)) && \
     !defined(CPU_MODEL_STM32F042K6) && !defined(CPU_MODEL_STM32F031K6)
+#define XTIMER_WIDTH                (16)
+#endif
+
+#if defined(CPU_FAM_STM32G0)
 #define XTIMER_WIDTH                (16)
 #endif
 

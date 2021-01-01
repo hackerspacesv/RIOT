@@ -22,6 +22,8 @@
 #include "log.h"
 
 #include "suit.h"
+#include "suit/storage.h"
+#include "suit/transport/mock.h"
 #include "embUnit.h"
 
 #define TEST_MANIFEST_INCLUDE(file) <blob/bin/BOARD_NAME_UNQ/manifests/file>
@@ -32,7 +34,10 @@
 #include TEST_MANIFEST_INCLUDE(manifest1.bin.h)
 #include TEST_MANIFEST_INCLUDE(manifest2.bin.h)
 #include TEST_MANIFEST_INCLUDE(manifest3.bin.h)
+#include TEST_MANIFEST_INCLUDE(manifest4.bin.h)
 
+#include TEST_MANIFEST_INCLUDE(file1.bin.h)
+#include TEST_MANIFEST_INCLUDE(file2.bin.h)
 #define SUIT_URL_MAX            128
 
 typedef struct {
@@ -47,21 +52,33 @@ const manifest_blob_t manifest_blobs[] = {
     { manifest1_bin, sizeof(manifest1_bin), SUIT_ERR_SEQUENCE_NUMBER },
     { manifest2_bin, sizeof(manifest2_bin), SUIT_ERR_COND },
     { manifest3_bin, sizeof(manifest3_bin), SUIT_OK },
+    { manifest4_bin, sizeof(manifest4_bin), SUIT_OK },
 };
 
 const unsigned manifest_blobs_numof = ARRAY_SIZE(manifest_blobs);
+
+const suit_transport_mock_payload_t payloads[] = {
+    {
+        .buf = file1_bin,
+        .len = sizeof(file1_bin),
+    },
+    {
+        .buf = file2_bin,
+        .len = sizeof(file2_bin),
+    }
+};
+
+const size_t num_payloads = ARRAY_SIZE(payloads);
 
 static int test_suit_manifest(const unsigned char *manifest_bin,
                                 size_t manifest_bin_len)
 {
     char _url[SUIT_URL_MAX];
     suit_manifest_t manifest;
-    riotboot_flashwrite_t writer;
+
 
     memset(&manifest, 0, sizeof(manifest));
-    memset(&writer, 0, sizeof(writer));
 
-    manifest.writer = &writer;
     manifest.urlbuf = _url;
     manifest.urlbuf_len = SUIT_URL_MAX;
 
@@ -77,6 +94,7 @@ static int test_suit_manifest(const unsigned char *manifest_bin,
 
 static void test_suit_manifest_01_manifests(void)
 {
+    suit_storage_set_seq_no_all(1);
     for (unsigned i = 0; i < manifest_blobs_numof; i++) {
         printf("\n--- testing manifest %u\n", i);
         int res = \

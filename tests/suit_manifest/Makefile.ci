@@ -4,6 +4,7 @@ BOARD_INSUFFICIENT_MEMORY := \
     msb-430 \
     msb-430h \
     nucleo-f030r8 \
+    nucleo-f031k6 \
     nucleo-f042k6 \
     nucleo-l031k6 \
     nucleo-l053r8 \
@@ -11,7 +12,5 @@ BOARD_INSUFFICIENT_MEMORY := \
     stm32l0538-disco \
     stm32f0discovery \
     telosb \
-    wsn430-v1_3b \
-    wsn430-v1_4 \
     z1 \
     #

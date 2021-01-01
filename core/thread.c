@@ -20,6 +20,9 @@
 
 #include <errno.h>
 #include <stdio.h>
+#ifdef PICOLIBC_TLS
+#include <picotls.h>
+#endif
 
 #include "assert.h"
 #include "thread.h"
@@ -30,25 +33,17 @@
 #include "bitarithm.h"
 #include "sched.h"
 
-volatile thread_t *thread_get(kernel_pid_t pid)
-{
-    if (pid_is_valid(pid)) {
-        return sched_threads[pid];
-    }
-    return NULL;
-}
-
 thread_status_t thread_getstatus(kernel_pid_t pid)
 {
-    volatile thread_t *thread = thread_get(pid);
+    thread_t *thread = thread_get(pid);
 
     return thread ? thread->status : STATUS_NOT_FOUND;
 }
 
 const char *thread_getname(kernel_pid_t pid)
 {
-#ifdef DEVELHELP
-    volatile thread_t *thread = thread_get(pid);
+#ifdef CONFIG_THREAD_NAMES
+    thread_t *thread = thread_get(pid);
     return thread ? thread->name : NULL;
 #else
     (void)pid;
@@ -63,7 +58,7 @@ void thread_zombify(void)
     }
 
     irq_disable();
-    sched_set_status((thread_t *)sched_active_thread, STATUS_ZOMBIE);
+    sched_set_status(thread_get_active(), STATUS_ZOMBIE);
     irq_enable();
     thread_yield_higher();
 
@@ -78,7 +73,7 @@ int thread_kill_zombie(kernel_pid_t pid)
 
     int result = (int)STATUS_NOT_FOUND;
 
-    thread_t *thread = (thread_t *)thread_get(pid);
+    thread_t *thread = thread_get(pid);
 
     if (!thread) {
         DEBUG("thread_kill: Thread does not exist!\n");
@@ -106,7 +101,7 @@ void thread_sleep(void)
     }
 
     unsigned state = irq_disable();
-    sched_set_status((thread_t *)sched_active_thread, STATUS_SLEEPING);
+    sched_set_status(thread_get_active(), STATUS_SLEEPING);
     irq_restore(state);
     thread_yield_higher();
 }
@@ -117,7 +112,7 @@ int thread_wakeup(kernel_pid_t pid)
 
     unsigned old_state = irq_disable();
 
-    thread_t *thread = (thread_t *)thread_get(pid);
+    thread_t *thread = thread_get(pid);
 
     if (!thread) {
         DEBUG("thread_wakeup: Thread does not exist!\n");
@@ -143,7 +138,7 @@ int thread_wakeup(kernel_pid_t pid)
 void thread_yield(void)
 {
     unsigned old_state = irq_disable();
-    thread_t *me = (thread_t *)sched_active_thread;
+    thread_t *me = thread_get_active();
 
     if (me->status >= STATUS_ON_RUNQUEUE) {
         clist_lpoprpush(&sched_runqueues[me->priority]);
@@ -174,9 +169,11 @@ void thread_add_to_list(list_node_t *list, thread_t *thread)
 }
 
 #ifdef DEVELHELP
-uintptr_t thread_measure_stack_free(char *stack)
+uintptr_t thread_measure_stack_free(const char *stack)
 {
-    uintptr_t *stackp = (uintptr_t *)stack;
+    /* Alignment of stack has been fixed (if needed) by thread_create(), so
+     * we can silence -Wcast-align here */
+    uintptr_t *stackp = (uintptr_t *)(uintptr_t)stack;
 
     /* assume that the comparison fails before or after end of stack */
     /* assume that the stack grows "downwards" */
@@ -199,8 +196,9 @@ kernel_pid_t thread_create(char *stack, int stacksize, uint8_t priority,
 
 #ifdef DEVELHELP
     int total_stacksize = stacksize;
-#else
-    (void)name;
+#endif
+#ifndef CONFIG_THREAD_NAMES
+    (void) name;
 #endif
 
     /* align the stack on a 16/32bit boundary */
@@ -220,14 +218,24 @@ kernel_pid_t thread_create(char *stack, int stacksize, uint8_t priority,
     if (stacksize < 0) {
         DEBUG("thread_create: stacksize is too small!\n");
     }
-    /* allocate our thread control block at the top of our stackspace */
-    thread_t *thread = (thread_t *)(stack + stacksize);
+    /* allocate our thread control block at the top of our stackspace. Cast to
+     * (uintptr_t) intermediately to silence -Wcast-align. (We manually made
+     * sure alignment is correct above.) */
+    thread_t *thread = (thread_t *)(uintptr_t)(stack + stacksize);
+
+#ifdef PICOLIBC_TLS
+    stacksize -= _tls_size();
+
+    thread->tls = stack + stacksize;
+    _init_tls(thread->tls);
+#endif
 
 #if defined(DEVELHELP) || defined(SCHED_TEST_STACK)
     if (flags & THREAD_CREATE_STACKTEST) {
-        /* assign each int of the stack the value of it's address */
-        uintptr_t *stackmax = (uintptr_t *)(stack + stacksize);
-        uintptr_t *stackp = (uintptr_t *)stack;
+        /* assign each int of the stack the value of it's address. Alignment
+         * has been handled above, so silence -Wcast-align */
+        uintptr_t *stackmax = (uintptr_t *)(uintptr_t)(stack + stacksize);
+        uintptr_t *stackp = (uintptr_t *)(uintptr_t)stack;
 
         while (stackp < stackmax) {
             *stackp = (uintptr_t)stackp;
@@ -235,8 +243,9 @@ kernel_pid_t thread_create(char *stack, int stacksize, uint8_t priority,
         }
     }
     else {
-        /* create stack guard */
-        *(uintptr_t *)stack = (uintptr_t)stack;
+        /* create stack guard. Alignment has been handled above, so silence
+         * -Wcast-align */
+        *(uintptr_t *)(uintptr_t)stack = (uintptr_t)stack;
     }
 #endif
 
@@ -269,6 +278,8 @@ kernel_pid_t thread_create(char *stack, int stacksize, uint8_t priority,
 
 #ifdef DEVELHELP
     thread->stack_size = total_stacksize;
+#endif
+#ifdef CONFIG_THREAD_NAMES
     thread->name = name;
 #endif
 

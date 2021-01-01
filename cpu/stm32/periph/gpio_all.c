@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2014-2015 Freie Universität Berlin
  *               2015 Hamburg University of Applied Sciences
- *               2017 Inria
+ *               2017-2020 Inria
  *               2017 OTA keys S.A.
  *
  * This file is subject to the terms and conditions of the GNU Lesser General
@@ -28,6 +28,7 @@
 
 
 #include "cpu.h"
+#include "bitarithm.h"
 #include "periph/gpio.h"
 #include "periph_conf.h"
 
@@ -44,7 +45,7 @@ static gpio_isr_ctx_t isr_ctx[EXTI_NUMOF];
 #endif /* MODULE_PERIPH_GPIO_IRQ */
 
 #if defined(CPU_FAM_STM32L4) || defined(CPU_FAM_STM32WB) || \
-    defined(CPU_FAM_STM32G4)
+    defined(CPU_FAM_STM32G4) || defined(CPU_FAM_STM32G0)
 #define EXTI_REG_RTSR       (EXTI->RTSR1)
 #define EXTI_REG_FTSR       (EXTI->FTSR1)
 #define EXTI_REG_PR         (EXTI->PR1)
@@ -88,7 +89,7 @@ static inline void port_init_clock(GPIO_TypeDef *port, gpio_t pin)
     (void)port; /* <-- Only used for when port G requires special handling */
 #if defined(CPU_FAM_STM32F0) || defined (CPU_FAM_STM32F3) || defined(CPU_FAM_STM32L1)
     periph_clk_en(AHB, (RCC_AHBENR_GPIOAEN << _port_num(pin)));
-#elif defined (CPU_FAM_STM32L0)
+#elif defined (CPU_FAM_STM32L0) || defined(CPU_FAM_STM32G0)
     periph_clk_en(IOP, (RCC_IOPENR_GPIOAEN << _port_num(pin)));
 #elif defined (CPU_FAM_STM32L4) || defined(CPU_FAM_STM32WB) || \
       defined (CPU_FAM_STM32G4)
@@ -154,7 +155,7 @@ void gpio_init_analog(gpio_t pin)
      * gpio_init first */
 #if defined(CPU_FAM_STM32F0) || defined (CPU_FAM_STM32F3) || defined(CPU_FAM_STM32L1)
     periph_clk_en(AHB, (RCC_AHBENR_GPIOAEN << _port_num(pin)));
-#elif defined (CPU_FAM_STM32L0)
+#elif defined (CPU_FAM_STM32L0) || defined(CPU_FAM_STM32G0)
     periph_clk_en(IOP, (RCC_IOPENR_GPIOAEN << _port_num(pin)));
 #elif defined (CPU_FAM_STM32L4) || defined(CPU_FAM_STM32WB) || \
       defined (CPU_FAM_STM32G4)
@@ -224,6 +225,8 @@ int gpio_init_int(gpio_t pin, gpio_mode_t mode, gpio_flank_t flank,
 #ifndef CPU_FAM_STM32WB
 #ifdef CPU_FAM_STM32F0
     periph_clk_en(APB2, RCC_APB2ENR_SYSCFGCOMPEN);
+#elif defined(CPU_FAM_STM32G0)
+    periph_clk_en(APB12, RCC_APBENR2_SYSCFGEN);
 #else
     periph_clk_en(APB2, RCC_APB2ENR_SYSCFGEN);
 #endif
@@ -233,7 +236,8 @@ int gpio_init_int(gpio_t pin, gpio_mode_t mode, gpio_flank_t flank,
     gpio_init(pin, mode);
 
     /* enable global pin interrupt */
-#if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0)
+#if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0) || \
+    defined(CPU_FAM_STM32G0)
     if (pin_num < 2) {
         NVIC_EnableIRQ(EXTI0_1_IRQn);
     }
@@ -259,26 +263,52 @@ int gpio_init_int(gpio_t pin, gpio_mode_t mode, gpio_flank_t flank,
     EXTI_REG_RTSR |=  ((flank & 0x1) << pin_num);
     EXTI_REG_FTSR &= ~(1 << pin_num);
     EXTI_REG_FTSR |=  ((flank >> 1) << pin_num);
+
+#if defined(CPU_FAM_STM32G0)
+    /* enable specific pin as exti sources */
+    EXTI->EXTICR[pin_num >> 2] &= ~(0xf << ((pin_num & 0x03) * 8));
+    EXTI->EXTICR[pin_num >> 2] |= (port_num << ((pin_num & 0x03) * 8));
+    /* clear any pending requests */
+    EXTI->RPR1 = (1 << pin_num);
+    EXTI->FPR1 = (1 << pin_num);
+#else
     /* enable specific pin as exti sources */
     SYSCFG->EXTICR[pin_num >> 2] &= ~(0xf << ((pin_num & 0x03) * 4));
     SYSCFG->EXTICR[pin_num >> 2] |= (port_num << ((pin_num & 0x03) * 4));
-
     /* clear any pending requests */
     EXTI_REG_PR = (1 << pin_num);
+#endif
     /* unmask the pins interrupt channel */
     EXTI_REG_IMR |= (1 << pin_num);
 
     return 0;
 }
+
 void isr_exti(void)
 {
+#if defined(CPU_FAM_STM32G0)
+    /* only generate interrupts against lines which have their IMR set */
+    uint32_t pending_rising_isr = (EXTI->RPR1 & EXTI_REG_IMR);
+    uint32_t pending_falling_isr = (EXTI->FPR1 & EXTI_REG_IMR);
+
+    /* clear by writing a 1 */
+    EXTI->RPR1 = pending_rising_isr;
+    EXTI->FPR1 = pending_falling_isr;
+
+    uint32_t pending_isr = pending_rising_isr | pending_falling_isr;
+#else
     /* only generate interrupts against lines which have their IMR set */
     uint32_t pending_isr = (EXTI_REG_PR & EXTI_REG_IMR);
-    for (size_t i = 0; i < EXTI_NUMOF; i++) {
-        if (pending_isr & (1 << i)) {
-            EXTI_REG_PR = (1 << i);        /* clear by writing a 1 */
-            isr_ctx[i].cb(isr_ctx[i].arg);
-        }
+
+    /* clear by writing a 1 */
+    EXTI_REG_PR = pending_isr;
+#endif
+
+    /* iterate over all set bits */
+    uint8_t pin = 0;
+    while (pending_isr) {
+        pending_isr = bitarithm_test_and_clear(pending_isr, &pin);
+        isr_ctx[pin].cb(isr_ctx[pin].arg);
     }
     cortexm_isr_end();
 }

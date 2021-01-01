@@ -49,7 +49,7 @@ static gcoap_listener_t listener_second = {
     .next          = NULL
 };
 
-static const char *resource_list_str = "</act/switch>,</sensor/temp>,</test/info/all>,</second/part>";
+static const char *resource_list_str = "</second/part>,</act/switch>,</sensor/temp>,</test/info/all>";
 
 /*
  * Client GET request success case. Test request generation.
@@ -161,7 +161,7 @@ static void test_gcoap__client_put_req(void)
 static void test_gcoap__client_put_req_overfill(void)
 {
     /* header 4, token 2, path 11, format 1, marker 1 = 19 */
-    uint8_t buf[18+CONFIG_GCOAP_REQ_OPTIONS_BUF];
+    uint8_t buf[18];
     coap_pkt_t pdu;
     ssize_t len;
     char path[] = "/riot/value";

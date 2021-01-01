@@ -20,9 +20,9 @@ BOARD_INSUFFICIENT_MEMORY := \
     calliope-mini \
     cc2650-launchpad \
     cc2650stk \
-    chronos \
     derfmega128 \
     derfmega256 \
+    e104-bt5010a-tb \
     ek-lm4f120xl \
     esp8266-esp-12x \
     esp8266-olimex-mod \
@@ -57,6 +57,9 @@ BOARD_INSUFFICIENT_MEMORY := \
     nucleo-f303k8 \
     nucleo-f334r8 \
     nucleo-f410rb \
+    nucleo-g070rb \
+    nucleo-g071rb \
+    nucleo-g431rb \
     nucleo-l031k6 \
     nucleo-l053r8 \
     nucleo-l073rz \
@@ -94,8 +97,7 @@ BOARD_INSUFFICIENT_MEMORY := \
     teensy31 \
     telosb \
     waspmote-pro \
-    wsn430-v1_3b \
-    wsn430-v1_4 \
+    yarm \
     yunjia-nrf51822 \
     z1 \
     #

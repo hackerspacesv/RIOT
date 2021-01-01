@@ -43,6 +43,12 @@ static sd_rw_response_t _read_csd(sdcard_spi_t *card);
 static sd_rw_response_t _read_data_packet(sdcard_spi_t *card, uint8_t token, uint8_t *data, int size);
 static sd_rw_response_t _write_data_packet(sdcard_spi_t *card, uint8_t token, const uint8_t *data, int size);
 
+/* number of used sd cards */
+#define SDCARD_SPI_NUM ARRAY_SIZE(sdcard_spi_params)
+
+/* Allocate memory for the device descriptors */
+sdcard_spi_t sdcard_spi_devs[SDCARD_SPI_NUM];
+
 /* CRC-7 (polynomial: x^7 + x^3 + 1) LSB of CRC-7 in a 8-bit variable is always 1*/
 static uint8_t _crc_7(const uint8_t *data, int n);
 
@@ -91,7 +97,7 @@ static sd_init_fsm_state_t _init_sd_fsm_step(sdcard_spi_t *card, sd_init_fsm_sta
                 (gpio_init(card->params.clk,  GPIO_OUT) == 0) &&
                 (gpio_init(card->params.cs,   GPIO_OUT) == 0) &&
                 (gpio_init(card->params.miso, GPIO_IN_PU) == 0) &&
-                ( (card->params.power == GPIO_UNDEF) ||
+                ( (!gpio_is_valid(card->params.power)) ||
                   (gpio_init(card->params.power, GPIO_OUT) == 0)) ) {
 
                 DEBUG("gpio_init(): [OK]\n");
@@ -104,7 +110,7 @@ static sd_init_fsm_state_t _init_sd_fsm_step(sdcard_spi_t *card, sd_init_fsm_sta
         case SD_INIT_SPI_POWER_SEQ:
             DEBUG("SD_INIT_SPI_POWER_SEQ\n");
 
-            if (card->params.power != GPIO_UNDEF) {
+            if (gpio_is_valid(card->params.power)) {
                 gpio_write(card->params.power, card->params.power_act_high);
                 xtimer_usleep(SD_CARD_WAIT_AFTER_POWER_UP_US);
             }

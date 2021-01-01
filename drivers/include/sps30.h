@@ -91,15 +91,15 @@ typedef struct {
  *
  */
 typedef struct {
-    float mc_pm1;       /**< Mass concentration of PM 1.0 [µg/m^3] */
-    float mc_pm2_5;     /**< Mass concentration of PM 2.5 [µg/m^3] */
-    float mc_pm4;       /**< Mass concentration of PM 4.0 [µg/m^3] */
-    float mc_pm10;      /**< Mass concentration of PM 10 [µg/m^3] */
-    float nc_pm0_5;     /**< Number concentration of PM 0.5 [µg/m^3] */
-    float nc_pm1;       /**< Number concentration of PM 1.0 [µg/m^3] */
-    float nc_pm2_5;     /**< Number concentration of PM 2.5 [µg/m^3] */
-    float nc_pm4;       /**< Number concentration of PM 4.0 [µg/m^3] */
-    float nc_pm10;      /**< Number concentration of PM 10 [µg/m^3] */
+    float mc_pm1;       /**< Mass concentration of all particles <= 1µm [µg/m^3] */
+    float mc_pm2_5;     /**< Mass concentration of all particles <= 2.5µm [µg/m^3] */
+    float mc_pm4;       /**< Mass concentration of all particles <= 4µm [µg/m^3] */
+    float mc_pm10;      /**< Mass concentration of all particles <= 10µm [µg/m^3] */
+    float nc_pm0_5;     /**< Number concentration of all particles <= 0.5µm [#/cm^3] */
+    float nc_pm1;       /**< Number concentration of all particles <= 1µm [#/cm^3] */
+    float nc_pm2_5;     /**< Number concentration of all particles <= 2.5µm [#/cm^3] */
+    float nc_pm4;       /**< Number concentration of all particles <= 4µm [#/cm^3] */
+    float nc_pm10;      /**< Number concentration of all particles <= 10µm [#/cm^3] */
     float ps;           /**< Typical particle size [µm] */
 } sps30_data_t;
 
@@ -286,6 +286,24 @@ int sps30_read_serial_number(const sps30_t *dev, char *str, size_t len);
  * @return      #SPS30_OK on success, negative #sps30_error_code_t on error
  */
 int sps30_reset(const sps30_t *dev);
+
+/**
+ * @brief       Put the sensor in sleep mode
+ *
+ * @param[in]   dev        Pointer to an SPS30 device handle
+ *
+ * @return      #SPS30_OK on success, negative #sps30_error_code_t on error
+ */
+int sps30_sleep(const sps30_t *dev);
+
+/**
+ * @brief       Wake up sensor from sleep mode (returns sensor to Idle mode)
+ *
+ * @param[in]   dev        Pointer to an SPS30 device handle
+ *
+ * @return      #SPS30_OK on success, negative #sps30_error_code_t on error
+ */
+int sps30_wakeup(const sps30_t *dev);
 
 #ifdef __cplusplus
 }

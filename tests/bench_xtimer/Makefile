@@ -22,9 +22,10 @@ LOW_MEMORY_BOARDS += \
   cc1352-launchpad \
   cc2650-launchpad \
   cc2650stk \
-  chronos \
+  e104-bt5010a-tb \
   derfmega128 \
   feather-m0 \
+  feather-m0-wifi \
   hifive1 \
   hifive1b \
   i-nucleo-lrwan1 \
@@ -62,8 +63,7 @@ LOW_MEMORY_BOARDS += \
   telosb \
   waspmote-pro \
   wemos-zero \
-  wsn430-v1_3b \
-  wsn430-v1_4 \
+  yarm \
   yunjia-nrf51822 \
   z1 \
   #

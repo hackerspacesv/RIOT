@@ -3,7 +3,8 @@ ifeq (,$(CPU_MODEL))
 endif
 
 # Target triple for the build. Use arm-none-eabi if you are unsure.
-TARGET_ARCH ?= arm-none-eabi
+TARGET_ARCH_CORTEXM ?= arm-none-eabi
+TARGET_ARCH ?= $(TARGET_ARCH_CORTEXM)
 
 # define build specific options
 CFLAGS_CPU   = -mcpu=$(MCPU) -mlittle-endian -mthumb $(CFLAGS_FPU)
@@ -60,18 +61,13 @@ endif # BUILD_IN_DOCKER
 CFLAGS += -DCPU_MODEL_$(call uppercase_and_underscore,$(CPU_MODEL))
 CFLAGS += -DCPU_CORE_$(call uppercase_and_underscore,$(CPU_CORE))
 
-# Add corresponding FPU CFLAGS
-# clang assumes there is an FPU, no CFLAGS necessary
-ifneq (llvm, $(TOOLCHAIN))
-  ifeq ($(CPU_CORE),cortex-m7)
-    _CORTEX_HW_FPU_CFLAGS = -mfloat-abi=hard -mfpu=fpv5-sp-d16
-  else
-    _CORTEX_HW_FPU_CFLAGS = -mfloat-abi=hard -mfpu=fpv4-sp-d16
-  endif
-endif
 # Add soft or hard FPU CFLAGS depending on the module
 ifneq (,$(filter cortexm_fpu,$(USEMODULE)))
-  CFLAGS_FPU ?= $(_CORTEX_HW_FPU_CFLAGS)
+  ifeq ($(CPU_CORE),cortex-m7)
+    CFLAGS_FPU ?= -mfloat-abi=hard -mfpu=fpv5-sp-d16
+  else
+    CFLAGS_FPU ?= -mfloat-abi=hard -mfpu=fpv4-sp-d16
+  endif
 else
   CFLAGS_FPU ?= -mfloat-abi=soft
 endif
@@ -100,13 +96,6 @@ ifneq (,$(filter cmsis-dsp,$(USEPKG)))
   else ifeq ($(CPU_CORE),cortex-m23)
     CFLAGS += -DARM_MATH_CM23
   endif
-endif
-
-# Explicitly tell the linker to link the startup code.
-#   Without this the interrupt vectors will not be linked correctly!
-VECTORS_O ?= $(BINDIR)/cpu/vectors.o
-ifeq ($(COMMON_STARTUP),)
-  UNDEF += $(VECTORS_O)
 endif
 
 # CPU depends on the cortex-m common module, so include it:

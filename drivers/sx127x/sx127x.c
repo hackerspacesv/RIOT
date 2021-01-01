@@ -24,8 +24,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "xtimer.h"
+#include "timex.h"
+#include "ztimer.h"
 #include "thread.h"
+#include "kernel_defines.h"
 
 #include "periph/gpio.h"
 #include "periph/spi.h"
@@ -104,18 +106,18 @@ int sx127x_reset(const sx127x_t *dev)
      * 2. Set NReset in Hi-Z state
      * 3. Wait at least 5 milliseconds
      */
-    if (dev->params.reset_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->params.reset_pin)) {
         gpio_init(dev->params.reset_pin, GPIO_OUT);
 
         /* set reset pin to the state that triggers manual reset */
         gpio_write(dev->params.reset_pin, SX127X_POR_ACTIVE_LOGIC_LEVEL);
 
-        xtimer_usleep(SX127X_MANUAL_RESET_SIGNAL_LEN_US);
+        ztimer_sleep(ZTIMER_USEC, SX127X_MANUAL_RESET_SIGNAL_LEN_US);
 
         /* Put reset pin in High-Z */
         gpio_init(dev->params.reset_pin, GPIO_IN);
 
-        xtimer_usleep(SX127X_MANUAL_RESET_WAIT_FOR_READY_US);
+        ztimer_sleep(ZTIMER_USEC, SX127X_MANUAL_RESET_WAIT_FOR_READY_US);
     }
 
     return 0;
@@ -137,7 +139,7 @@ int sx127x_init(sx127x_t *dev)
 
     _init_timers(dev);
 
-    if (dev->params.reset_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->params.reset_pin)) {
         /* reset pin should be left floating during POR */
         gpio_init(dev->params.reset_pin, GPIO_IN);
 
@@ -147,7 +149,7 @@ int sx127x_init(sx127x_t *dev)
     }
 
     /* wait for the device to become ready */
-    xtimer_usleep(SX127X_POR_WAIT_FOR_READY_US);
+    ztimer_sleep(ZTIMER_USEC, SX127X_POR_WAIT_FOR_READY_US);
 
     sx127x_reset(dev);
 
@@ -170,17 +172,18 @@ void sx127x_init_radio_settings(sx127x_t *dev)
     sx127x_set_channel(dev, SX127X_CHANNEL_DEFAULT);
     sx127x_set_modem(dev, SX127X_MODEM_DEFAULT);
     sx127x_set_tx_power(dev, SX127X_RADIO_TX_POWER);
-    sx127x_set_bandwidth(dev, LORA_BW_DEFAULT);
-    sx127x_set_spreading_factor(dev, LORA_SF_DEFAULT);
-    sx127x_set_coding_rate(dev, LORA_CR_DEFAULT);
+    sx127x_set_bandwidth(dev, CONFIG_LORA_BW_DEFAULT);
+    sx127x_set_spreading_factor(dev, CONFIG_LORA_SF_DEFAULT);
+    sx127x_set_coding_rate(dev, CONFIG_LORA_CR_DEFAULT);
     sx127x_set_crc(dev, LORA_PAYLOAD_CRC_ON_DEFAULT);
-    sx127x_set_freq_hop(dev, LORA_FREQUENCY_HOPPING_DEFAULT);
-    sx127x_set_hop_period(dev, LORA_FREQUENCY_HOPPING_PERIOD_DEFAULT);
-    sx127x_set_fixed_header_len_mode(dev, LORA_FIXED_HEADER_LEN_MODE_DEFAULT);
-    sx127x_set_iq_invert(dev, LORA_IQ_INVERTED_DEFAULT);
-    sx127x_set_payload_length(dev, LORA_PAYLOAD_LENGTH_DEFAULT);
-    sx127x_set_preamble_length(dev, LORA_PREAMBLE_LENGTH_DEFAULT);
-    sx127x_set_symbol_timeout(dev, LORA_SYMBOL_TIMEOUT_DEFAULT);
+    sx127x_set_freq_hop(dev, IS_ACTIVE(CONFIG_LORA_FREQUENCY_HOPPING_DEFAULT) ? true : false);
+    sx127x_set_hop_period(dev, CONFIG_LORA_FREQUENCY_HOPPING_PERIOD_DEFAULT);
+    sx127x_set_fixed_header_len_mode(dev, IS_ACTIVE(CONFIG_LORA_FIXED_HEADER_LEN_MODE_DEFAULT) ?
+                                                    true : false);
+    sx127x_set_iq_invert(dev, IS_ACTIVE(CONFIG_LORA_IQ_INVERTED_DEFAULT) ? true : false);
+    sx127x_set_payload_length(dev, CONFIG_LORA_PAYLOAD_LENGTH_DEFAULT);
+    sx127x_set_preamble_length(dev, CONFIG_LORA_PREAMBLE_LENGTH_DEFAULT);
+    sx127x_set_symbol_timeout(dev, CONFIG_LORA_SYMBOL_TIMEOUT_DEFAULT);
     sx127x_set_rx_single(dev, SX127X_RX_SINGLE);
     sx127x_set_tx_timeout(dev, SX127X_TX_TIMEOUT_DEFAULT);
 }
@@ -205,7 +208,7 @@ uint32_t sx127x_random(sx127x_t *dev)
     sx127x_set_op_mode(dev, SX127X_RF_OPMODE_RECEIVER);
 
     for (unsigned i = 0; i < 32; i++) {
-        xtimer_usleep(1000); /* wait for the chaos */
+        ztimer_sleep(ZTIMER_MSEC, 1);   /* wait one millisecond */
 
         /* Non-filtered RSSI value reading. Only takes the LSB value */
         rnd |= ((uint32_t) sx127x_reg_read(dev, SX127X_REG_LR_RSSIWIDEBAND) & 0x01) << i;
@@ -256,7 +259,7 @@ static int _init_gpios(sx127x_t *dev)
     int res;
 
     /* Check if DIO0 pin is defined */
-    if (dev->params.dio0_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->params.dio0_pin)) {
         res = gpio_init_int(dev->params.dio0_pin, SX127X_DIO_PULL_MODE,
                             GPIO_RISING, sx127x_on_dio0_isr, dev);
         if (res < 0) {
@@ -271,7 +274,7 @@ static int _init_gpios(sx127x_t *dev)
     }
 
     /* Check if DIO1 pin is defined */
-    if (dev->params.dio1_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->params.dio1_pin)) {
         res = gpio_init_int(dev->params.dio1_pin, SX127X_DIO_PULL_MODE,
                             GPIO_RISING, sx127x_on_dio1_isr, dev);
         if (res < 0) {
@@ -281,7 +284,7 @@ static int _init_gpios(sx127x_t *dev)
     }
 
     /* check if DIO2 pin is defined */
-    if (dev->params.dio2_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->params.dio2_pin)) {
         res = gpio_init_int(dev->params.dio2_pin, SX127X_DIO_PULL_MODE,
                             GPIO_RISING, sx127x_on_dio2_isr, dev);
         if (res < 0) {
@@ -291,11 +294,11 @@ static int _init_gpios(sx127x_t *dev)
     }
     else {
         /* if frequency hopping is enabled, DIO2 pin must be defined */
-        assert(LORA_FREQUENCY_HOPPING_DEFAULT == false);
+        assert(!IS_ACTIVE(CONFIG_LORA_FREQUENCY_HOPPING_DEFAULT));
     }
 
     /* check if DIO3 pin is defined */
-    if (dev->params.dio3_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->params.dio3_pin)) {
         res = gpio_init_int(dev->params.dio3_pin, SX127X_DIO_PULL_MODE,
                             GPIO_RISING, sx127x_on_dio3_isr, dev);
         if (res < 0) {
