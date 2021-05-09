@@ -459,10 +459,11 @@ extern "C" {
  * @{
  */
 #define GCOAP_MEMO_UNUSED       (0)     /**< This memo is unused */
-#define GCOAP_MEMO_WAIT         (1)     /**< Request sent; awaiting response */
-#define GCOAP_MEMO_RESP         (2)     /**< Got response */
-#define GCOAP_MEMO_TIMEOUT      (3)     /**< Timeout waiting for response */
-#define GCOAP_MEMO_ERR          (4)     /**< Error processing response packet */
+#define GCOAP_MEMO_RETRANSMIT   (1)     /**< Request sent, retransmitting until response arrives */
+#define GCOAP_MEMO_WAIT         (2)     /**< Request sent; awaiting response */
+#define GCOAP_MEMO_RESP         (3)     /**< Got response */
+#define GCOAP_MEMO_TIMEOUT      (4)     /**< Timeout waiting for response */
+#define GCOAP_MEMO_ERR          (5)     /**< Error processing response packet */
 /** @} */
 
 /**
@@ -612,15 +613,58 @@ typedef ssize_t (*gcoap_link_encoder_t)(const coap_resource_t *resource, char *b
                                         size_t maxlen, coap_link_encoder_ctx_t *context);
 
 /**
+ * @name    Return values for resource related operations
+ * @{
+ */
+#define GCOAP_RESOURCE_FOUND        (0)
+#define GCOAP_RESOURCE_WRONG_METHOD (1)
+#define GCOAP_RESOURCE_NO_PATH      (2)
+#define GCOAP_RESOURCE_ERROR        (3)
+/** @} */
+
+/**
+ * @brief   Forward declaration of the gcoap listener state container
+ */
+typedef struct gcoap_listener gcoap_listener_t;
+
+/**
+ * @brief   Handler function for the request matcher strategy
+ *
+ * @param[in]  listener     Listener context
+ * @param[out] resource     Matching resource
+ * @param[in]  pdu          Pointer to the PDU
+ *
+ * @return  GCOAP_RESOURCE_FOUND      on resource match
+ * @return  GCOAP_RESOURCE_NO_PATH    on no path found in @p resource
+ *                                    that matches @p pdu
+ * @return  GCOAP_RESOURCE_ERROR      on processing failure of the request
+ */
+typedef int (*gcoap_request_matcher_t)(gcoap_listener_t *listener,
+                                       const coap_resource_t **resource,
+                                       const coap_pkt_t *pdu);
+
+/**
  * @brief   A modular collection of resources for a server
  */
-typedef struct gcoap_listener {
+struct gcoap_listener {
     const coap_resource_t *resources;   /**< First element in the array of
                                          *   resources; must order alphabetically */
     size_t resources_len;               /**< Length of array */
     gcoap_link_encoder_t link_encoder;  /**< Writes a link for a resource */
     struct gcoap_listener *next;        /**< Next listener in list */
-} gcoap_listener_t;
+
+    /**
+     * @brief  Function that picks a suitable request handler from a
+     * request.
+     *
+     * @note Leaving this NULL selects the default strategy that picks
+     * handlers by matching their Uri-Path to resource paths (as per
+     * the documentation of the @ref resources and @ref resources_len
+     * fields). Alternative handlers may cast the @ref resources and
+     * @ref resources_len fields to fit their needs.
+     */
+    gcoap_request_matcher_t request_matcher;
+};
 
 /**
  * @brief   Forward declaration of the request memo type
@@ -688,6 +732,16 @@ kernel_pid_t gcoap_init(void);
 
 /**
  * @brief   Starts listening for resource paths
+ *
+ * @pre @p listener is a valid pointer to a single listener (that is,
+ *      `listener->next == NULL`)
+ *
+ * @note If you are tempted to register a pre-linked chain of listeners,
+ *       consider placing all their resources in the resources array of a
+ *       single listener instead. In the few cases where this does not work
+ *       (that is, when the resources need a different `link_encoder` or other
+ *       fields of the listener struct), they can just be registered
+ *       individually.
  *
  * @param[in] listener  Listener containing the resources.
  */
@@ -862,26 +916,6 @@ int gcoap_get_resource_list(void *buf, size_t maxlen, uint8_t cf);
  */
 ssize_t gcoap_encode_link(const coap_resource_t *resource, char *buf,
                           size_t maxlen, coap_link_encoder_ctx_t *context);
-
-/**
- * @brief   Adds a single Uri-Query option to a CoAP request
- *
- * To add multiple Uri-Query options, simply call this function multiple times.
- * The Uri-Query options will be added in the order those calls.
- *
- * @deprecated  Will not be available after the 2020.10 release. Use
- * coap_opt_add_uri_query() instead.
- *
- * @param[out] pdu      The package that is being build
- * @param[in]  key      Key to add to the query string
- * @param[in]  val      Value to assign to @p key (may be NULL)
- *
- * @pre     ((pdu != NULL) && (key != NULL))
- *
- * @return  overall length of new query string
- * @return  -1 on error
- */
-int gcoap_add_qstring(coap_pkt_t *pdu, const char *key, const char *val);
 
 #ifdef __cplusplus
 }

@@ -20,13 +20,14 @@
  */
 
 #ifdef MODULE_GNRC_ICMPV6
+#include <limits.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #include "bitfield.h"
 #include "byteorder.h"
-#include "kernel_types.h"
+#include "sched.h"
 #ifdef MODULE_LUID
 #include "luid.h"
 #endif
@@ -321,7 +322,7 @@ static void _pinger(_ping_data_t *data)
             goto error_exit;
         }
         gnrc_netif_hdr_set_netif(tmp->data, data->netif);
-        LL_PREPEND(pkt, tmp);
+        pkt = gnrc_pkt_prepend(pkt, tmp);
     }
     if (data->datalen >= sizeof(uint32_t)) {
         uint32_t now = xtimer_now_usec();
@@ -345,7 +346,7 @@ static void _print_reply(_ping_data_t *data, gnrc_pktsnip_t *icmpv6,
     icmpv6_echo_t *icmpv6_hdr = icmpv6->data;
 
     kernel_pid_t if_pid = netif_hdr ? netif_hdr->if_pid : KERNEL_PID_UNDEF;
-    int16_t rssi = netif_hdr ? netif_hdr->rssi : 0;
+    int16_t rssi = netif_hdr ? netif_hdr->rssi : GNRC_NETIF_HDR_NO_RSSI;
 
     /* discard if too short */
     if (icmpv6->size < (data->datalen + sizeof(icmpv6_echo_t))) {
@@ -396,7 +397,7 @@ static void _print_reply(_ping_data_t *data, gnrc_pktsnip_t *icmpv6,
                    from_str, if_pid, recv_seq, hoplimit);
 
         }
-        if (rssi) {
+        if (rssi != GNRC_NETIF_HDR_NO_RSSI) {
             printf(" rssi=%"PRId16" dBm", rssi);
         }
         if (data->datalen >= sizeof(uint32_t)) {

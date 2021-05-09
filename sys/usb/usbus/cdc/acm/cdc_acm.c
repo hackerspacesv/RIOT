@@ -18,6 +18,7 @@
 
 #define USB_H_USER_IS_RIOT_INTERNAL
 
+#include <assert.h>
 #include <string.h>
 
 #include "tsrb.h"
@@ -28,7 +29,7 @@
 #include "usb/usbus/cdc/acm.h"
 #include "usb/usbus/control.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static void _init(usbus_t *usbus, usbus_handler_t *handler);
@@ -88,7 +89,7 @@ static size_t _gen_mngt_descriptor(usbus_t *usbus, usbus_cdcacm_device_t *cdcacm
     mngt.length = sizeof(usb_desc_call_mngt_t);
     mngt.type = USB_TYPE_DESCRIPTOR_CDC;
     mngt.subtype = USB_CDC_DESCR_SUBTYPE_CALL_MGMT;
-    mngt.capabalities = 0;
+    mngt.capabilities = 0;
     mngt.data_if = cdcacm->iface_data.idx;
     usbus_control_slicer_put_bytes(usbus, (uint8_t*)&mngt, sizeof(mngt));
     return sizeof(usb_desc_call_mngt_t);
@@ -116,7 +117,7 @@ static size_t _gen_acm_descriptor(usbus_t *usbus)
     acm.type = USB_TYPE_DESCRIPTOR_CDC;
     acm.subtype = USB_CDC_DESCR_SUBTYPE_ACM;
     /* Support for Set/Get_Line_coding, Control_State, and Serial_State notif */
-    acm.capabalities = 0x02;
+    acm.capabilities = 0x02;
     usbus_control_slicer_put_bytes(usbus, (uint8_t*)&acm, sizeof(acm));
     return sizeof(usb_desc_acm_t);
 }

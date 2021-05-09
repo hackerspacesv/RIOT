@@ -214,6 +214,13 @@ typedef enum {
 /** @} */
 
 /**
+ * @brief   Size of the UART TX buffer for non-blocking mode.
+ */
+#ifndef UART_TXBUF_SIZE
+#define UART_TXBUF_SIZE    (64)
+#endif
+
+/**
  * @name   Override SPI mode settings
  * @{
  */
@@ -358,13 +365,6 @@ typedef gpio_t adc_conf_t;
    As the WDT is clocked by a 32 kHz clock and supports 4 intervals */
 #define NWDT_TIME_LOWER_LIMIT          (2U)
 #define NWDT_TIME_UPPER_LIMIT          (1000U)
-/** @} */
-
-/**
- * @name Radio peripheral configuration
- * @{
- */
-#define RADIO_IRQ_PRIO      1
 /** @} */
 
 #ifdef __cplusplus

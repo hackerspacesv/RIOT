@@ -23,7 +23,7 @@
 #include "at86rf215_internal.h"
 #include "periph/spi.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* we can still go +3 dBm higher by increasing PA current */
@@ -87,6 +87,18 @@ void at86rf215_set_addr_long(at86rf215_t *dev, uint64_t addr)
 uint8_t at86rf215_get_chan(const at86rf215_t *dev)
 {
     return at86rf215_reg_read16(dev, dev->RF->RG_CNL);
+}
+
+void at86rf215_set_trim(at86rf215_t *dev, uint8_t trim)
+{
+    assert(trim <= 0xF);
+    at86rf215_reg_write(dev, RG_RF_XOC, trim | XOC_FS_MASK);
+}
+
+void at86rf215_set_clock_output(at86rf215_t *dev,
+                                at86rf215_clko_cur_t cur, at86rf215_clko_freq_t freq)
+{
+    at86rf215_reg_write(dev, RG_RF_CLKO, cur | freq);
 }
 
 void at86rf215_set_chan(at86rf215_t *dev, uint16_t channel)
@@ -212,6 +224,13 @@ void at86rf215_enable_rpc(at86rf215_t *dev)
 
     /* no Reduced Power mode available for OFDM */
 
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+    if (dev->fsk_pl) {
+        /* MR-FSK */
+        at86rf215_reg_or(dev, dev->BBC->RG_FSKRPC, FSKRPC_EN_MASK);
+        return;
+    }
+#endif
 #ifdef MODULE_NETDEV_IEEE802154_MR_OQPSK
     {
         /* MR-O-QPSK */
@@ -228,6 +247,13 @@ void at86rf215_disable_rpc(at86rf215_t *dev)
 
     /* no Reduced Power mode available for OFDM */
 
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+    if (dev->fsk_pl) {
+        /* MR-FSK */
+        at86rf215_reg_and(dev, dev->BBC->RG_FSKRPC, ~FSKRPC_EN_MASK);
+        return;
+    }
+#endif
 #ifdef MODULE_NETDEV_IEEE802154_MR_OQPSK
     {
         /* MR-O-QPSK */
@@ -243,14 +269,6 @@ void at86rf215_set_option(at86rf215_t *dev, uint16_t option, bool state)
                          : (dev->flags & ~option);
 
     switch (option) {
-        case AT86RF215_OPT_TELL_RX_START:
-            if (state) {
-                at86rf215_reg_or(dev, dev->BBC->RG_IRQM, BB_IRQ_RXAM);
-            } else {
-                at86rf215_reg_and(dev, dev->BBC->RG_IRQM, ~BB_IRQ_RXAM);
-            }
-
-            break;
         case AT86RF215_OPT_PROMISCUOUS:
             if (state) {
                 at86rf215_reg_or(dev, dev->BBC->RG_AFC0, AFC0_PM_MASK);
@@ -381,4 +399,50 @@ bool at86rf215_set_idle_from_rx(at86rf215_t *dev, uint8_t state)
     }
 
     return false;
+}
+
+int at86rf215_enable_batmon(at86rf215_t *dev, unsigned voltage)
+{
+    uint8_t bmdvc;
+
+    /* only configure BATMON on one interface */
+    if (!is_subGHz(dev) && dev->sibling != NULL) {
+        dev = dev->sibling;
+    }
+
+    /* ensure valid range */
+    if (voltage < 1700 || voltage > 3675) {
+        return -ERANGE;
+    }
+
+    if (voltage > 2500) {
+        /* high range */
+        bmdvc = (voltage - 2550 + 37) / 75;
+        DEBUG("[at86rf215] BATMON set to %u mV\n", 2550 + 75 * bmdvc);
+
+        bmdvc |= BMDVC_BMHR_MASK;
+    } else {
+        /* low range */
+        bmdvc  = (voltage - 1700 + 25) / 50;
+        DEBUG("[at86rf215] BATMON set to %u mV\n", 1700 + 50 * bmdvc);
+    }
+
+    /* set batmon threshold */
+    at86rf215_reg_write(dev, RG_RF_BMDVC, bmdvc);
+
+    /* enable interrupt */
+    at86rf215_reg_or(dev, dev->RF->RG_IRQM, RF_IRQ_BATLOW);
+
+    return 0;
+}
+
+void at86rf215_disable_batmon(at86rf215_t *dev)
+{
+    /* only configure BATMON on one interface */
+    if (!is_subGHz(dev) && dev->sibling != NULL) {
+        dev = dev->sibling;
+    }
+
+    /* disable interrupt */
+    at86rf215_reg_and(dev, dev->RF->RG_IRQM, ~RF_IRQ_BATLOW);
 }

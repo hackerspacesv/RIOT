@@ -11,20 +11,25 @@ LOW_MEMORY_BOARDS += \
   arduino-mkrfox1200 \
   arduino-mkrwan1300 \
   arduino-mkrzero \
+  arduino-nano-33-iot \
   atmega1284p \
   b-l072z-lrwan1 \
+  bastwan \
   blackpill \
   blackpill-128kib \
   bluepill \
   bluepill-128kib \
   calliope-mini \
   cc1312-launchpad \
+  cc1350-launchpad \
   cc1352-launchpad \
   cc2650-launchpad \
   cc2650stk \
   e104-bt5010a-tb \
+  e104-bt5011a-tb \
   derfmega128 \
   feather-m0 \
+  feather-m0-lora \
   feather-m0-wifi \
   hifive1 \
   hifive1b \
@@ -51,6 +56,7 @@ LOW_MEMORY_BOARDS += \
   opencm904 \
   saml10-xpro \
   saml11-xpro \
+  sensebox_samd21 \
   serpente \
   sodaq-autonomo \
   sodaq-explorer \
@@ -74,6 +80,7 @@ SUPER_LOW_MEMORY_BOARDS += \
   arduino-nano \
   arduino-uno \
   atmega328p \
+  atmega328p-xplained-mini \
   nucleo-f031k6 \
   stm32f030f4-demo \
   #

@@ -16,6 +16,7 @@
  * @}
  */
 
+#include <assert.h>
 #include "log.h"
 #include "irq.h"
 #include "panic.h"
@@ -23,7 +24,7 @@
 #include "kw41zrf_getset.h"
 #include "kw41zrf_intern.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**

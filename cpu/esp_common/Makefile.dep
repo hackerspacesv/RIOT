@@ -7,7 +7,6 @@ USEMODULE += esp_common_periph
 USEMODULE += esp_freertos
 USEMODULE += esp_idf
 USEMODULE += log
-USEMODULE += newlib
 USEMODULE += periph
 USEMODULE += periph_hwrng
 USEMODULE += periph_flash
@@ -22,7 +21,13 @@ USEMODULE += xtensa
 
 # Features used by ESP*
 
+FEATURES_REQUIRED += newlib
 FEATURES_REQUIRED += cpp # Vendor code uses C++
+
+ifneq (,$(filter esp_wifi_ap,$(USEMODULE)))
+  FEATURES_REQUIRED += esp_wifi_ap
+  USEMODULE += esp_wifi
+endif
 
 ifneq (,$(filter esp_wifi_enterprise,$(USEMODULE)))
   FEATURES_REQUIRED += esp_wifi_enterprise

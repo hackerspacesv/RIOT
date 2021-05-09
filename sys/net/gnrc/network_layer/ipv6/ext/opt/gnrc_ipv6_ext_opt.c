@@ -13,6 +13,8 @@
  * @author  Martine Lenders <m.lenders@fu-berlin.de>
  */
 
+#include <assert.h>
+
 #include "net/ipv6.h"
 #include "net/ipv6/ext.h"
 #include "net/ipv6/ext/opt.h"
@@ -21,7 +23,7 @@
 
 #include "net/gnrc/ipv6/ext/opt.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**

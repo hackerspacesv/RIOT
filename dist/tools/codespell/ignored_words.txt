@@ -101,3 +101,15 @@ files'
 
 # dedup (used in a GNRC header file name) => dedupe
 dedup
+
+# circularly (used in "circularly linked list" in clist.h) => circular
+circularly
+
+# Chang (common name) => Change
+chang
+
+# filp (variable name for file pointer) => flip
+filp
+
+# Ether (Scapy class name and means Ethernet in some parts of the code) => Either
+ether

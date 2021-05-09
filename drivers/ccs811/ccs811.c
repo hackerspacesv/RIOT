@@ -13,6 +13,7 @@
  * @file
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,7 +24,7 @@
 #include "ccs811_regs.h"
 #include "ccs811.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**
@@ -511,7 +512,7 @@ static int _reg_read(const ccs811_t *dev, uint8_t reg, uint8_t *data, uint32_t l
 #endif
 
     if (res == CCS811_OK) {
-        if (ENABLE_DEBUG) {
+        if (IS_ACTIVE(ENABLE_DEBUG)) {
             printf("[ccs811] %s dev=%d addr=%02x: read following bytes: ",
                    __func__, dev->params.i2c_dev, dev->params.i2c_addr);
             for (unsigned i = 0; i < len; i++) {
@@ -536,7 +537,7 @@ static int _reg_write(const ccs811_t *dev, uint8_t reg, uint8_t *data, uint32_t 
 
     int res = CCS811_OK;
 
-    if (ENABLE_DEBUG && data && len) {
+    if (IS_ACTIVE(ENABLE_DEBUG) && data && len) {
         printf("[css811] %s dev=%d addr=%02x: write following bytes: ",
                __func__, dev->params.i2c_dev, dev->params.i2c_addr);
         for (unsigned i = 0; i < len; i++) {

@@ -26,7 +26,7 @@
 #include "mrf24j40_registers.h"
 #include "xtimer.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* Values of RFCON3 - Address: 0x203
@@ -157,24 +157,17 @@ void mrf24j40_set_addr_short(mrf24j40_t *dev, uint16_t addr)
                              naddr.u8[0]);
 }
 
-uint64_t mrf24j40_get_addr_long(mrf24j40_t *dev)
+void mrf24j40_get_addr_long(mrf24j40_t *dev, uint8_t *addr)
 {
-    network_uint64_t naddr;
-
     for (int i = 0; i < 8; i++) {
-        naddr.u8[7 - i] = mrf24j40_reg_read_short(dev, (MRF24J40_REG_EADR0 + i));
+        addr[7 - i] = mrf24j40_reg_read_short(dev, MRF24J40_REG_EADR0 + i);
     }
-    return naddr.u64;
 }
 
-void mrf24j40_set_addr_long(mrf24j40_t *dev, uint64_t addr)
+void mrf24j40_set_addr_long(mrf24j40_t *dev, const uint8_t *addr)
 {
-    network_uint64_t naddr;
-    naddr.u64 = addr;
-
     for (int i = 0; i < 8; i++) {
-        mrf24j40_reg_write_short(dev, (MRF24J40_REG_EADR0 + i),
-                                 (naddr.u8[7 - i]));
+        mrf24j40_reg_write_short(dev, MRF24J40_REG_EADR0 + i, addr[7 - i]);
     }
 }
 
@@ -267,7 +260,7 @@ uint16_t mrf24j40_get_pan(mrf24j40_t *dev)
 
 void mrf24j40_set_pan(mrf24j40_t *dev, uint16_t pan)
 {
-    le_uint16_t le_pan = byteorder_btols(byteorder_htons(pan));
+    le_uint16_t le_pan = byteorder_htols(pan);
 
     DEBUG("pan0: %u, pan1: %u\n", le_pan.u8[0], le_pan.u8[1]);
     mrf24j40_reg_write_short(dev, MRF24J40_REG_PANIDL, le_pan.u8[0]);

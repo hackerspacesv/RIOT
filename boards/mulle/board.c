@@ -55,9 +55,11 @@ static const mtd_spi_nor_params_t mulle_nor_params = {
     .wait_32k_erase = 20LU * US_PER_MS,
     .wait_chip_wake_up = 1LU * US_PER_MS,
     .spi = MULLE_NOR_SPI_DEV,
-    .cs = MULLE_NOR_SPI_CS,
     .addr_width = 3,
     .mode = SPI_MODE_3,
+    .cs = MULLE_NOR_SPI_CS,
+    .wp = GPIO_UNDEF,
+    .hold = GPIO_UNDEF,
     .clk = SPI_CLK_10MHZ,
 };
 
@@ -173,9 +175,7 @@ static int mulle_nvram_init(void)
     }
 
     /* Register DevFS node */
-    devfs_register(&mulle_nvram_devfs);
-
-    return 0;
+    return devfs_register(&mulle_nvram_devfs);
 }
 
 static void increase_boot_count(void)
@@ -198,7 +198,7 @@ int mulle_nor_init(void)
 
     if (res >= 0) {
         /* Register DevFS node */
-        devfs_register(&mulle_nor_devfs);
+        res = devfs_register(&mulle_nor_devfs);
     }
 
     return res;

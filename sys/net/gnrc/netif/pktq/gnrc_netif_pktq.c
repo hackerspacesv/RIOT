@@ -13,6 +13,8 @@
  * @author  Martine Lenders <m.lenders@fu-berlin.de>
  */
 
+#include <assert.h>
+
 #include "net/gnrc/pktqueue.h"
 #include "net/gnrc/netif/conf.h"
 #include "net/gnrc/netif/internal.h"
@@ -28,6 +30,18 @@ static gnrc_pktqueue_t *_get_free_entry(void)
         }
     }
     return NULL;
+}
+
+unsigned gnrc_netif_pktq_usage(void)
+{
+    unsigned res = 0;
+
+    for (unsigned i = 0; i < CONFIG_GNRC_NETIF_PKTQ_POOL_SIZE; i++) {
+        if (_pool[i].pkt != NULL) {
+            res++;
+        }
+    }
+    return res;
 }
 
 int gnrc_netif_pktq_put(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)

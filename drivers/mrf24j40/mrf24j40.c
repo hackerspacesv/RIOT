@@ -20,30 +20,28 @@
  * @}
  */
 
-#include "luid.h"
 #include "byteorder.h"
-#include "net/gnrc.h"
 #include "mrf24j40_registers.h"
 #include "mrf24j40_internal.h"
 #include "mrf24j40_netdev.h"
 #include "xtimer.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
-void mrf24j40_setup(mrf24j40_t *dev, const mrf24j40_params_t *params)
+void mrf24j40_setup(mrf24j40_t *dev, const mrf24j40_params_t *params, uint8_t index)
 {
     netdev_t *netdev = (netdev_t *)dev;
 
     netdev->driver = &mrf24j40_driver;
     /* initialize device descriptor */
     dev->params = *params;
+
+    netdev_register(netdev, NETDEV_MRF24J40, index);
 }
 
 int mrf24j40_reset(mrf24j40_t *dev)
 {
-    eui64_t addr_long;
-
     int res = mrf24j40_init(dev);
 
     if (res < 0) {
@@ -52,13 +50,12 @@ int mrf24j40_reset(mrf24j40_t *dev)
 
     netdev_ieee802154_reset(&dev->netdev);
 
-    /* get an 8-byte unique ID to use as hardware address */
-    luid_get(addr_long.uint8, IEEE802154_LONG_ADDRESS_LEN);
-    addr_long.uint8[0] &= ~(0x01);
-    addr_long.uint8[0] |=  (0x02);
+    /* set device address */
+    netdev_ieee802154_setup(&dev->netdev);
+
     /* set short and long address */
-    mrf24j40_set_addr_long(dev, ntohll(addr_long.uint64.u64));
-    mrf24j40_set_addr_short(dev, ntohs(addr_long.uint16[0].u16));
+    mrf24j40_set_addr_long(dev, dev->netdev.long_addr);
+    mrf24j40_set_addr_short(dev, unaligned_get_u16(dev->netdev.short_addr));
 
     mrf24j40_set_chan(dev, CONFIG_IEEE802154_DEFAULT_CHANNEL);
 
@@ -159,7 +156,7 @@ void mrf24j40_tx_exec(mrf24j40_t *dev)
     else {
         mrf24j40_reg_write_short(dev, MRF24J40_REG_TXNCON, MRF24J40_TXNCON_TXNTRIG);
     }
-    if (netdev->event_callback && (dev->netdev.flags & MRF24J40_OPT_TELL_TX_START)) {
+    if (netdev->event_callback) {
         netdev->event_callback(netdev, NETDEV_EVENT_TX_STARTED);
     }
 }

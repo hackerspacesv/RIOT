@@ -24,7 +24,7 @@
 #include "si70xx_internals.h"
 #include "si70xx.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define SI70XX_I2C     (dev->params.i2c_dev)
@@ -169,7 +169,7 @@ int si70xx_init(si70xx_t *dev, const si70xx_params_t *params)
     i2c_release(SI70XX_I2C);
 
     /* sensor is ready after at most 25 ms */
-    xtimer_usleep(25 * US_PER_MS);
+    xtimer_msleep(25);
 
     DEBUG("[DEBUG] Device initialized with success.\n");
     return SI70XX_OK;

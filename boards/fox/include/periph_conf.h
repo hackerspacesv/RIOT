@@ -31,7 +31,7 @@
 #define CLOCK_HSE               MHZ(16)
 
 #include "periph_cpu.h"
-#include "f1f3/cfg_clock_default.h"
+#include "clk_conf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -117,7 +117,7 @@ static const spi_conf_t spi_config[] = {
  * @{
  */
 #ifndef RTT_FREQUENCY
-#define RTT_FREQUENCY       (1)             /* in Hz */
+#define RTT_FREQUENCY       (RTT_MAX_FREQUENCY)     /* in Hz */
 #endif
 /** @} */
 

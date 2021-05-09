@@ -81,8 +81,9 @@
 #define SCHED_H
 
 #include <stddef.h>
+#include <inttypes.h>
+
 #include "kernel_defines.h"
-#include "kernel_types.h"
 #include "native_sched.h"
 #include "clist.h"
 
@@ -90,6 +91,50 @@
 extern "C" {
 #endif
 
+/**
+ * @def MAXTHREADS
+ * @brief The maximum number of threads to be scheduled
+ */
+#ifndef MAXTHREADS
+#define MAXTHREADS 32
+#endif
+
+/**
+ * Canonical identifier for an invalid PID.
+ */
+#define KERNEL_PID_UNDEF 0
+
+/**
+ * The first valid PID (inclusive).
+ */
+#define KERNEL_PID_FIRST (KERNEL_PID_UNDEF + 1)
+
+/**
+ * The last valid PID (inclusive).
+ */
+#define KERNEL_PID_LAST (KERNEL_PID_FIRST + MAXTHREADS - 1)
+
+/**
+ * Macro for printing formatter
+ */
+#define PRIkernel_pid PRIi16
+
+/**
+ * Unique process identifier
+ */
+typedef int16_t kernel_pid_t;
+
+/**
+ * @brief   Determine if the given pid is valid
+ *
+ * @param[in]   pid     The pid to check
+ *
+ * @return      true if the pid is valid, false otherwise
+ */
+static inline int pid_is_valid(kernel_pid_t pid)
+{
+    return ((KERNEL_PID_FIRST <= pid) && (pid <= KERNEL_PID_LAST));
+}
 /**
  * @brief forward declaration for thread_t, defined in thread.h
  */
@@ -232,6 +277,26 @@ typedef void (*sched_callback_t)(kernel_pid_t active, kernel_pid_t next);
  */
 void sched_register_cb(sched_callback_t callback);
 #endif /* MODULE_SCHED_CB */
+
+/**
+ * @brief   Advance a runqueue
+ *
+ *  Advances the runqueue of that priority by one step to the next thread in
+ *  that priority.
+ *  Next time that priority is scheduled the now first thread will get activated.
+ *  Calling this will not start the scheduler.
+ *
+ * @warning This API is not intended for out of tree users.
+ *          Breaking API changes will be done without notice and
+ *          without deprecation. Consider yourself warned!
+ *
+ * @param   prio      The priority of the runqueue to advance
+ *
+ */
+static inline void sched_runq_advance(uint8_t prio)
+{
+    clist_lpoprpush(&sched_runqueues[prio]);
+}
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Freie Universität Berlin
+ * Copyright (C) 2015-2020 Freie Universität Berlin
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -22,6 +22,7 @@
 
 #include "cpu.h"
 #include "periph_conf.h"
+#include "periph/adc.h"
 #include "periph/gpio.h"
 #include "periph/spi.h"
 
@@ -32,7 +33,8 @@ extern "C" {
 /**
  * @name    Xtimer configuration
  *
- * The timer runs at 250 KHz to increase accuracy or 32768 Hz for LETIMER.
+ * The timer runs at 250 kHz to increase accuracy, or at 32.768 kHz if
+ * LETIMER is used.
  * @{
  */
 #if IS_ACTIVE(CONFIG_EFM32_XTIMER_USE_LETIMER)
@@ -44,7 +46,7 @@ extern "C" {
 #define XTIMER_HZ           (250000UL)
 #define XTIMER_WIDTH        (16)
 #endif
-#define XTIMER_CHAN (0)
+#define XTIMER_CHAN         (0)
 /** @} */
 
 /**
@@ -73,6 +75,15 @@ extern "C" {
 #define LED1_ON             gpio_set(LED1_PIN)
 #define LED1_OFF            gpio_clear(LED1_PIN)
 #define LED1_TOGGLE         gpio_toggle(LED1_PIN)
+/** @} */
+
+/**
+ * @name    Core temperature sensor configuration
+ *
+ * Connection to the on-chip temperature sensor.
+ * @{
+ */
+#define CORETEMP_ADC        ADC_LINE(0)
 /** @} */
 
 /**
@@ -118,7 +129,7 @@ extern "C" {
  * @{
  */
 #ifndef ICM20648_ENABLED
-#define ICM20648_ENABLED    (0)
+#define ICM20648_ENABLED    0
 #endif
 #define ICM20648_SPI        SPI_DEV(0)
 #define ICM20648_PIC_ADDR   (0x00)
@@ -143,16 +154,16 @@ extern "C" {
  * @{
  */
 #ifndef RGB_LED1_ENABLED
-#define RGB_LED1_ENABLED    (1)
+#define RGB_LED1_ENABLED    1
 #endif
 #ifndef RGB_LED2_ENABLED
-#define RGB_LED2_ENABLED    (1)
+#define RGB_LED2_ENABLED    1
 #endif
 #ifndef RGB_LED3_ENABLED
-#define RGB_LED3_ENABLED    (1)
+#define RGB_LED3_ENABLED    1
 #endif
 #ifndef RGB_LED4_ENABLED
-#define RGB_LED4_ENABLED    (1)
+#define RGB_LED4_ENABLED    1
 #endif
 #define RGB_LED_ADDR        (0x04)
 #define RGB_LED_EN_BIT      (0x00)
@@ -169,7 +180,7 @@ extern "C" {
  * @{
  */
 #ifndef SI1133_ENABLED
-#define SI1133_ENABLED      (0)
+#define SI1133_ENABLED      0
 #endif
 #define SI1133_I2C          I2C_DEV(0)
 /** @} */
@@ -193,7 +204,7 @@ extern "C" {
  * @{
  */
 #ifndef SI7210_ENABLED
-#define SI7210_ENABLED      (0)
+#define SI7210_ENABLED      0
 #endif
 #define SI7210_I2C          I2C_DEV(0)
 /** @} */

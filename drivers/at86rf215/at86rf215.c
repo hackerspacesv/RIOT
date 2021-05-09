@@ -26,7 +26,7 @@
 #include "at86rf215_netdev.h"
 #include "kernel_defines.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static void _setup_interface(at86rf215_t *dev, const at86rf215_params_t *params, uint8_t index)
@@ -93,6 +93,9 @@ void at86rf215_reset_and_cfg(at86rf215_t *dev)
     /* default to requesting ACKs, just like at86rf2xx */
     const netopt_enable_t enable = NETOPT_ENABLE;
     netdev_ieee802154_set(&dev->netdev, NETOPT_ACK_REQ, &enable, sizeof(enable));
+
+    /* enable RX start IRQs */
+    at86rf215_reg_or(dev, dev->BBC->RG_IRQM, BB_IRQ_RXAM);
 }
 
 void at86rf215_reset(at86rf215_t *dev)
@@ -125,7 +128,7 @@ if (!IS_ACTIVE(CONFIG_AT86RF215_USE_CLOCK_OUTPUT)){
 }
     /* allow to configure board-specific trim */
 #ifdef CONFIG_AT86RF215_TRIM_VAL
-    at86rf215_reg_write(dev, RG_RF_XOC, CONFIG_AT86RF215_TRIM_VAL | XOC_FS_MASK);
+    at86rf215_set_trim(dev, CONFIG_AT86RF215_TRIM_VAL);
 #endif
 
     /* enable TXFE & RXFE IRQ */
@@ -159,6 +162,12 @@ if (!IS_ACTIVE(CONFIG_AT86RF215_USE_CLOCK_OUTPUT)){
     if (CONFIG_AT86RF215_DEFAULT_PHY_MODE == IEEE802154_PHY_MR_OFDM) {
         at86rf215_configure_OFDM(dev, CONFIG_AT86RF215_DEFAULT_MR_OFDM_OPT,
                                       CONFIG_AT86RF215_DEFAULT_MR_OFDM_MCS);
+    }
+    if (CONFIG_AT86RF215_DEFAULT_PHY_MODE == IEEE802154_PHY_MR_FSK) {
+        at86rf215_configure_FSK(dev, CONFIG_AT86RF215_DEFAULT_MR_FSK_SRATE,
+                                     CONFIG_AT86RF215_DEFAULT_MR_FSK_MOD_IDX,
+                                     CONFIG_AT86RF215_DEFAULT_MR_FSK_MORD,
+                                     CONFIG_AT86RF215_DEFAULT_MR_FSK_FEC);
     }
 
     /* set default channel */
@@ -254,6 +263,10 @@ static void _block_while_busy(at86rf215_t *dev)
 
 static void at86rf215_block_while_busy(at86rf215_t *dev)
 {
+    if (!IS_ACTIVE(MODULE_AT86RF215_BLOCKING_SEND)) {
+        return;
+    }
+
     if (_tx_ongoing(dev)) {
         DEBUG("[at86rf215] Block while TXing\n");
         _block_while_busy(dev);
@@ -266,7 +279,12 @@ int at86rf215_tx_prepare(at86rf215_t *dev)
         return -EAGAIN;
     }
 
-    at86rf215_block_while_busy(dev);
+    if (!IS_ACTIVE(MODULE_AT86RF215_BLOCKING_SEND) && _tx_ongoing(dev)) {
+        return -EBUSY;
+    } else {
+        at86rf215_block_while_busy(dev);
+    }
+
     dev->tx_frame_len = IEEE802154_FCS_LEN;
 
     return 0;

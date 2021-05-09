@@ -18,6 +18,8 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "cpu.h"
 #include "periph/dac.h"
 #include "periph/gpio.h"
@@ -125,6 +127,12 @@ int8_t dac_init(dac_t line)
 
     DAC->CTRLA.bit.ENABLE = 1;
     _sync();
+
+#ifdef DAC_STATUS_READY
+    /* wait for DAC startup */
+    const uint32_t mask = 1 << (DAC_STATUS_READY_Pos + line);
+    while (!(DAC->STATUS.reg & mask)) {}
+#endif
 
     return DAC_OK;
 }

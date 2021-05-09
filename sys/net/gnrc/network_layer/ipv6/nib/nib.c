@@ -13,6 +13,7 @@
  * @author  Martine Lenders <m.lenders@fu-berlin.de>
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <kernel_defines.h>
@@ -39,9 +40,10 @@
 #include "_nib-6lr.h"
 #include "_nib-slaac.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
-#if ENABLE_DEBUG
+
+#if IS_ACTIVE(ENABLE_DEBUG)
 #include "evtimer.h"
 #endif
 
@@ -184,6 +186,18 @@ static bool _on_link(const ipv6_addr_t *dst, unsigned *iface)
     return ipv6_addr_is_link_local(dst);
 }
 
+static gnrc_netif_t *_acquire_new_iface(unsigned iface)
+{
+    gnrc_netif_t *netif = gnrc_netif_get_by_pid(iface);
+    /* release NIB, in case other thread calls a NIB function while we wait for
+     * the netif */
+    _nib_release();
+    gnrc_netif_acquire(netif);
+    /* re-acquire NIB */
+    _nib_acquire();
+    return netif;
+}
+
 int gnrc_ipv6_nib_get_next_hop_l2addr(const ipv6_addr_t *dst,
                                       gnrc_netif_t *netif, gnrc_pktsnip_t *pkt,
                                       gnrc_ipv6_nib_nc_t *nce)
@@ -206,10 +220,9 @@ int gnrc_ipv6_nib_get_next_hop_l2addr(const ipv6_addr_t *dst,
                   ipv6_addr_to_str(addr_str, dst, sizeof(addr_str)));
             /* on-link prefixes return their interface */
             if (!ipv6_addr_is_link_local(dst) && (iface != 0)) {
-                /* release preassumed interface */
+                /* release pre-assumed netif */
                 gnrc_netif_release(netif);
-                netif = gnrc_netif_get_by_pid(iface);
-                gnrc_netif_acquire(netif);
+                netif = _acquire_new_iface(iface);
             }
             if ((netif == NULL) ||
                 !_resolve_addr(dst, netif, pkt, nce, node)) {
@@ -257,13 +270,12 @@ int gnrc_ipv6_nib_get_next_hop_l2addr(const ipv6_addr_t *dst,
                 }
             }
             if ((netif != NULL) && (netif->pid != (int)route.iface)) {
-                /* drop pre-assumed netif */
+                /* release pre-assumed netif */
                 gnrc_netif_release(netif);
             }
             if ((netif == NULL) || (netif->pid != (int)route.iface)) {
                 /* get actual netif */
-                netif = gnrc_netif_get_by_pid(route.iface);
-                gnrc_netif_acquire(netif);
+                netif = _acquire_new_iface(route.iface);
             }
             node = _nib_onl_get(&route.next_hop,
                                 (netif != NULL) ? netif->pid : 0);
@@ -851,7 +863,7 @@ static void _send_delayed_nbr_adv(const gnrc_netif_t *netif,
         return;
     }
     gnrc_netif_hdr_set_netif(pkt->data, netif);
-    LL_PREPEND(payload, pkt);
+    pkt = gnrc_pkt_prepend(payload, pkt);
     _evtimer_add(pkt, GNRC_IPV6_NIB_SND_NA, &nce->snd_na,
                  random_uint32_range(0, NDP_MAX_ANYCAST_MS_DELAY));
 }
@@ -1240,7 +1252,8 @@ static bool _resolve_addr(const ipv6_addr_t *dst, gnrc_netif_t *netif,
                             return false;
                         }
                         gnrc_netif_hdr_set_netif(netif_hdr->data, netif);
-                        LL_PREPEND(queue_entry->pkt, netif_hdr);
+                        queue_entry->pkt = gnrc_pkt_prepend(queue_entry->pkt,
+                                                            netif_hdr);
                     }
                     gnrc_pktqueue_add(&entry->pktqueue, queue_entry);
                 }

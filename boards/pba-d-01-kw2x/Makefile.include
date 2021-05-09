@@ -1,7 +1,3 @@
-# set default port depending on operating system
-PORT_LINUX ?= /dev/ttyACM0
-PORT_DARWIN ?= $(firstword $(sort $(wildcard /dev/tty.usbmodem*)))
-
 # Add board selector (USB serial) to OpenOCD options if specified.
 # Use /dist/tools/usb-serial/list-ttys.sh to find out serial number.
 #   Usage: SERIAL="0200..." BOARD="pba-d-01-kw2x" make flash
@@ -15,8 +11,9 @@ ifneq (,$(SERIAL))
   PORT_LINUX := $(SERIAL_TTY)
 endif
 
-# setup serial terminal
-include $(RIOTMAKE)/tools/serial.inc.mk
+# this board uses openocd
+PROGRAMMER ?= openocd
+PROGRAMMERS_SUPPORTED += openocd
 
 # We need special handling of the watchdog if we want to speed up the flash
 # verification by using the MCU to compute the image checksum after flashing.
@@ -25,13 +22,10 @@ include $(RIOTMAKE)/tools/serial.inc.mk
 OPENOCD_PRE_VERIFY_CMDS += \
   -c 'load_image $(RIOTCPU)/$(CPU)/dist/wdog-disable.bin 0x20000000 bin' \
   -c 'resume 0x20000000'
-PRE_FLASH_CHECK_SCRIPT = $(RIOTCPU)/$(CPU)/dist/check-fcfield.sh
+OPENOCD_PRE_FLASH_CHECK_SCRIPT = $(RIOTCPU)/$(CPU)/dist/check-fcfield.sh
 
-DEBUG_ADAPTER ?= dap
+OPENOCD_DEBUG_ADAPTER ?= dap
 
 # The board can become un-flashable after some firmware, use connect_assert_srst
 # to always be able to flash or reset the board.
 OPENOCD_RESET_USE_CONNECT_ASSERT_SRST ?= 1
-
-# this board uses openocd
-include $(RIOTMAKE)/tools/openocd.inc.mk

@@ -41,7 +41,6 @@
 #define NET_GNRC_GOMACH_GOMACH_H
 
 #include "periph/rtt.h"
-#include "kernel_types.h"
 #include "net/gnrc/netif.h"
 
 #ifdef __cplusplus
@@ -367,7 +366,7 @@ extern "C" {
  * @return  negative number on error
  */
 int gnrc_netif_gomach_create(gnrc_netif_t *netif, char *stack, int stacksize,
-                             char priority, char *name, netdev_t *dev);
+                             char priority, const char *name, netdev_t *dev);
 
 #ifdef __cplusplus
 }

@@ -31,10 +31,27 @@ USEMODULE += netstats_l2
 USEMODULE += netstats_ipv6
 USEMODULE += netstats_rpl
 
+# Optionally include DNS support. This includes resolution of names at an
+# upstream DNS server and the handling of RDNSS options in Router Advertisements
+# to auto-configure that upstream DNS server.
+# USEMODULE += sock_dns              # include DNS client
+# USEMODULE += gnrc_ipv6_nib_dns     # include RDNSS option handling
+
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
 # development process:
 DEVELHELP ?= 1
+
+# Instead of simulating an Ethernet connection, we can also simulate
+# an IEEE 802.15.4 radio using ZEP
+USE_ZEP ?= 0
+
+# set the ZEP port for native
+ZEP_PORT_BASE ?= 17754
+ifeq (1,$(USE_ZEP))
+  TERMFLAGS += -z [::1]:$(ZEP_PORT_BASE)
+  USEMODULE += socket_zep
+endif
 
 # Uncomment the following 2 lines to specify static link lokal IPv6 address
 # this might be useful for testing, in cases where you cannot or do not want to

@@ -21,10 +21,21 @@
 #ifndef PERIPH_CONF_H
 #define PERIPH_CONF_H
 
+/* This board provides an LSE */
+#ifndef CONFIG_BOARD_HAS_LSE
+#define CONFIG_BOARD_HAS_LSE    1
+#endif
+
+/* This board provides an HSE */
+#ifndef CONFIG_BOARD_HAS_HSE
+#define CONFIG_BOARD_HAS_HSE    1
+#endif
+
 #include "periph_cpu.h"
-#include "f2/cfg_clock_120_8_1.h"
+#include "clk_conf.h"
 #include "cfg_i2c1_pb8_pb9.h"
 #include "cfg_usb_otg_fs.h"
+#include "mii.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -237,8 +248,7 @@ static const adc_conf_t adc_config[] = {
  */
 static const eth_conf_t eth_config = {
     .mode = RMII,
-    .mac = { 0 },
-    .speed = ETH_SPEED_100TX_FD,
+    .speed = MII_BMCR_SPEED_100 | MII_BMCR_FULL_DPLX,
     .dma = 6,
     .dma_chan = 8,
     .phy_addr = 0x00,

@@ -4,6 +4,10 @@
 # General Public License v2.1. See the file LICENSE in the top level
 # directory for more details.
 #
+config USEMODULE_GNRC_LORAWAN
+    bool
+    select HAVE_LORAWAN
+
 menuconfig KCONFIG_USEMODULE_GNRC_LORAWAN
     bool "Configure GNRC LoRaWAN"
     depends on USEMODULE_GNRC_LORAWAN

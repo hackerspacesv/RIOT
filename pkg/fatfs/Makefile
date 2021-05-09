@@ -1,9 +1,13 @@
 PKG_NAME=fatfs
+# upstream server is very unreliable, instead host the extracted
+# .zip file on GitHub and apply only the upstream patches
 PKG_URL=https://github.com/RIOT-OS/FatFS
-PKG_VERSION=34f371c7735fc6fc8e714a74a7a73a61d3ed5633
+PKG_VERSION=fb99d00924fd17c2d9c0789510852c2c286403ab # R0.14a
 PKG_LICENSE=BSD-1-Clause
 
 include $(RIOTBASE)/pkg/pkg.mk
 
+CFLAGS += -Wno-overflow
+
 all:
-	"$(MAKE)" -C $(PKG_SOURCE_DIR) -f $(RIOTBASE)/Makefile.base
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/source -f $(RIOTBASE)/Makefile.base MODULE=fatfs

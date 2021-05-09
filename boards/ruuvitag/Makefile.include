@@ -5,7 +5,8 @@ ifeq (,$(filter stdio_%,$(DISABLE_MODULE) $(USEMODULE)))
   RIOT_TERMINAL ?= jlink
 endif
 
-include $(RIOTMAKE)/tools/serial.inc.mk
-
 # use shared Makefile.include
 include $(RIOTBOARD)/common/nrf52xxxdk/Makefile.include
+
+# openocd doesn't fully work with this board
+PROGRAMMERS_SUPPORTED := $(filter-out openocd,$(PROGRAMMERS_SUPPORTED))

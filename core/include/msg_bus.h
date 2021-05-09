@@ -16,6 +16,22 @@
  * @file
  * @brief       Messaging Bus API for inter process message broadcast.
  *
+ *              Threads can subscribe to messages on one or multiple buses.
+ *              If a message is posted on one bus, all threads that are
+ *              subscribed to that message type will receive the message.
+ *
+ *              On one bus only 32 different message types are possible.
+ *              Do not use the `type` and `sender_pid` fields of a message
+ *              directly if it may have been received over a message bus.
+ *              Instead, use the @ref msg_bus_get_type and
+ *              @ref msg_bus_get_sender_pid functions.
+ *
+ *              If you want to check if a message was sent directly (not
+ *              over a bus, you can use the @ref msg_is_from_bus function.
+ *
+ *              @note Make sure to unsubscribe from all previously subscribed
+ *              buses before terminating a thread.
+ *
  * @author      Benjamin Valentin <benjamin.valentin@ml-pa.com>
  */
 
@@ -51,6 +67,12 @@ typedef struct {
 } msg_bus_entry_t;
 
 /**
+ * @brief Flag set on `sender_pid` of `msg_t` that indicates that
+ *        the message was sent over a bus.
+ */
+#define MSB_BUS_PID_FLAG    (1U << ((8 * sizeof(kernel_pid_t)) - 1))
+
+/**
  * @brief Initialize a message bus.
  *
  * Must be called by the owner of a ``msg_bus_t`` struct.
@@ -68,30 +90,61 @@ void msg_bus_init(msg_bus_t *bus);
  * The `type` field of the`msg_t` also encodes the message bus ID,
  * so use this function to get the real 5 bit message type.
  *
+ * If the message was not sent over a bus, this will return the
+ * original message ID.
+ *
  * @param[in] msg           A message that was received over a bus
  *
  * @return                  The message type
  */
-static inline uint8_t msg_bus_get_type(const msg_t *msg)
+static inline uint16_t msg_bus_get_type(const msg_t *msg)
 {
-    return msg->type & 0x1F;
+    if (msg->sender_pid & MSB_BUS_PID_FLAG) {
+        return msg->type & 0x1F;
+    }
+    else {
+        return msg->type;
+    }
 }
 
 /**
- * @brief Check if a message originates from a certain bus
+ * @brief Get the sender PID of a message bus message.
+ *
+ * The `sender_pid` field of the`msg_t` has a flag bit set
+ * to indicate the message was sent over a bus, thus it should
+ * not be used directly.
+ *
+ * @param[in] msg           A message that was received over a bus
+ *
+ * @return                  The sender pid
+ */
+static inline kernel_pid_t msg_bus_get_sender_pid(const msg_t *msg)
+{
+    return msg->sender_pid & ~MSB_BUS_PID_FLAG;
+}
+
+/**
+ * @brief Check if a message originates from a bus
  *
  * If a thread is attached to multiple buses, this function can be used
  * to determine if a message originated from a certain bus.
  *
- * @param[in] bus           The bus to check for
+ * @param[in] bus           The bus to check for, may be NULL
  * @param[in] msg           The received message
  *
  * @return                  True if the messages @p m was sent over @p bus
- *                          False otherwise.
+ *                          If @p bus is NULL, this function returns true
+ *                          if the message was sent over *any* bus.
+ *                          False if the messages @p m was a direct message
+ *                          or from a different bus.
  */
 static inline bool msg_is_from_bus(const msg_bus_t *bus, const msg_t *msg)
 {
-    return bus->id == (msg->type >> 5);
+    if (bus != NULL && (bus->id != (msg->type >> 5))) {
+        return false;
+    }
+
+    return msg->sender_pid & MSB_BUS_PID_FLAG;
 }
 
 /**
@@ -169,10 +222,10 @@ static inline void msg_bus_unsubscribe(msg_bus_entry_t *entry, uint8_t type)
  * This function sends a message to all threads listening on the bus which are
  * listening for messages with the message type of @p m.
  *
- * It behaves identical to @see msg_bus_post, but sends a pre-defined message.
+ * It behaves identical to @ref msg_bus_post, but sends a pre-defined message.
  *
- * @note The message is expected to have the event ID encoded in the lower 5 bits
- *       and the bus ID encoded in the upper 11 bits of the message type.
+ * @note The message is expected to have the event ID encoded in the lower
+ *       5 bits and the bus ID encoded in the upper 11 bits of the message type.
  *
  * @param[in] m             The message to post the bus
  * @param[in] bus           The message bus to post the message on

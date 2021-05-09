@@ -13,6 +13,7 @@
  * @author  Martine Lenders <mlenders@inf.fu-berlin.de>
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <string.h>
@@ -23,7 +24,7 @@
 
 /* XXX: BE CAREFUL ABOUT USING OUTPUT WITH MODULE_SLIPDEV_STDIO IN SENDING
  * FUNCTIONALITY! MIGHT CAUSE DEADLOCK!!!1!! */
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #include "isrpipe.h"

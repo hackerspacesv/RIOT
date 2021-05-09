@@ -10,14 +10,15 @@ config CPU_CORE_XTENSA_LX6
 
 config CPU_FAM_ESP32
     bool
-    select CPU_CORE_XTENSA_LX6
     select CPU_COMMON_ESP
+    select CPU_CORE_XTENSA_LX6
     select HAS_ARCH_ESP32
     select HAS_CPU_ESP32
     select HAS_ESP_WIFI_ENTERPRISE
     select HAS_PERIPH_ADC_CTRL
     select HAS_PERIPH_RTC
     select HAS_PERIPH_RTT
+    select HAS_PERIPH_RTT_SET_COUNTER
 
 ## CPU Models
 config CPU_MODEL_ESP32_WROOM_32
@@ -25,6 +26,14 @@ config CPU_MODEL_ESP32_WROOM_32
     select CPU_FAM_ESP32
 
 config CPU_MODEL_ESP32_WROVER
+    bool
+    select CPU_FAM_ESP32
+
+config CPU_MODEL_ESP32_WROVER_B
+    bool
+    select CPU_FAM_ESP32
+
+config CPU_MODEL_ESP32_WROVER_E
     bool
     select CPU_FAM_ESP32
 
@@ -76,6 +85,8 @@ config CPU_FAM
 config CPU_MODEL
     default "esp32-wroom_32" if CPU_MODEL_ESP32_WROOM_32
     default "esp32-wrover" if CPU_MODEL_ESP32_WROVER
+    default "esp32-wrover" if CPU_MODEL_ESP32_WROVER_B
+    default "esp32-wrover" if CPU_MODEL_ESP32_WROVER_E
     default "esp32-d0wd" if CPU_MODEL_ESP32_D0WD
 
 config CPU

@@ -22,11 +22,13 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <inttypes.h>
 
 #include "net/sock/udp.h"
 #include "msg.h"
+#include "timex.h"
 #include "tinydtls_keys.h"
 
 /* TinyDTLS */
@@ -34,7 +36,7 @@
 #include "dtls_debug.h"
 #include "tinydtls.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifndef DTLS_DEFAULT_PORT

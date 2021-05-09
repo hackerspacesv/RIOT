@@ -39,11 +39,12 @@
 #include "periph/init.h"
 #include "board.h"
 
-#if defined (CPU_FAM_STM32L4) || defined (CPU_FAM_STM32G4)
+#if defined (CPU_FAM_STM32L4) || defined (CPU_FAM_STM32G4) || \
+    defined(CPU_FAM_STM32L5)
 #define BIT_APB_PWREN       RCC_APB1ENR1_PWREN
 #elif defined (CPU_FAM_STM32G0)
 #define BIT_APB_PWREN       RCC_APBENR1_PWREN
-#else
+#elif !defined(CPU_FAM_STM32MP1)
 #define BIT_APB_PWREN       RCC_APB1ENR_PWREN
 #endif
 
@@ -151,16 +152,18 @@ void cpu_init(void)
     /* initialize the Cortex-M core */
     cortexm_init();
     /* enable PWR module */
-#ifndef CPU_FAM_STM32WB
+#if !defined(CPU_FAM_STM32WB) && !defined(CPU_FAM_STM32MP1)
     periph_clk_en(APB1, BIT_APB_PWREN);
 #endif
-    /* initialize the system clock as configured in the periph_conf.h */
-    stmclk_init_sysclk();
 #if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32F1) || \
     defined(CPU_FAM_STM32F2) || defined(CPU_FAM_STM32F3) || \
     defined(CPU_FAM_STM32F4) || defined(CPU_FAM_STM32F7) || \
     defined(CPU_FAM_STM32L1)
     _gpio_init_ain();
+#endif
+#if !defined(CPU_FAM_STM32MP1) || IS_USED(MODULE_STM32MP1_ENG_MODE)
+    /* initialize the system clock as configured in the periph_conf.h */
+    stmclk_init_sysclk();
 #endif
 #ifdef MODULE_PERIPH_DMA
     /*  initialize DMA streams */

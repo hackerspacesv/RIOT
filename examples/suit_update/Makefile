@@ -7,12 +7,6 @@ BOARD ?= samr21-xpro
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
 
-# lower pktbuf size to something sufficient for this application
-# Set GNRC_PKTBUF_SIZE via CFLAGS if not being set via Kconfig.
-ifndef CONFIG_GNRC_PKTBUF_SIZE
-  CFLAGS += -DCONFIG_GNRC_PKTBUF_SIZE=2000
-endif
-
 #
 # Networking
 #
@@ -57,6 +51,9 @@ FEATURES_OPTIONAL += periph_gpio_irq
 # Default COAP manifest resource location when fetched through gpio trigger
 CFLAGS += -DSUIT_MANIFEST_RESOURCE=\"$(SUIT_COAP_ROOT)/$(SUIT_NOTIFY_MANIFEST)\"
 
+# Enable test_utils_interactive_sync, only used when running automatic test
+DEFAULT_MODULE += test_utils_interactive_sync
+
 # Change this to 0 to not use ethos
 USE_ETHOS ?= 1
 
@@ -100,6 +97,18 @@ TESTRUNNER_RESET_AFTER_TERM ?= 1
 TEST_ON_CI_BLACKLIST = all
 
 include $(RIOTBASE)/Makefile.include
+
+# allow to use large blocks to utilize large MTUs (802.15.4g, Ethernet, WiFi)
+LARGE_BLOCKS ?= 0
+ifeq (1, $(LARGE_BLOCKS))
+  CFLAGS += -DCONFIG_SUIT_COAP_BLOCKSIZE=COAP_BLOCKSIZE_1024
+else
+# lower pktbuf size to something sufficient for this application
+# Set GNRC_PKTBUF_SIZE via CFLAGS if not being set via Kconfig.
+ifndef CONFIG_GNRC_PKTBUF_SIZE
+  CFLAGS += -DCONFIG_GNRC_PKTBUF_SIZE=2000
+endif
+endif
 
 .PHONY: host-tools
 

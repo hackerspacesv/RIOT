@@ -22,6 +22,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <inttypes.h>
 #include <string.h>
 
@@ -31,6 +32,7 @@
 #include "net/nanocoap_sock.h"
 #include "thread.h"
 #include "periph/pm.h"
+#include "xtimer.h"
 
 #include "suit/transport/coap.h"
 #include "net/sock/util.h"
@@ -49,7 +51,7 @@
 #include "progress_bar.h"
 #endif
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifndef SUIT_COAP_STACKSIZE
@@ -94,6 +96,8 @@ static inline void _print_download_progress(suit_manifest_t *manifest,
             puts("");
         }
     }
+#else
+    (void) image_size;
 #endif
 }
 #endif
@@ -194,14 +198,15 @@ static int _fetch_block(coap_pkt_t *pkt, uint8_t *buf, sock_udp_t *sock,
                         const char *path, coap_blksize_t blksize, size_t num)
 {
     uint8_t *pktpos = buf;
+    uint16_t lastonum = 0;
 
     pkt->hdr = (coap_hdr_t *)buf;
 
     pktpos += coap_build_hdr(pkt->hdr, COAP_TYPE_CON, NULL, 0, COAP_METHOD_GET,
                              num);
-    pktpos += coap_opt_put_uri_path(pktpos, 0, path);
+    pktpos += coap_opt_put_uri_pathquery(pktpos, &lastonum, path);
     pktpos +=
-        coap_opt_put_uint(pktpos, COAP_OPT_URI_PATH, COAP_OPT_BLOCK2,
+        coap_opt_put_uint(pktpos, lastonum, COAP_OPT_BLOCK2,
                           (num << 4) | blksize);
 
     pkt->payload = pktpos;
@@ -342,7 +347,7 @@ ssize_t suit_coap_get_blockwise_url_buf(const char *url,
 static void _suit_handle_url(const char *url)
 {
     LOG_INFO("suit_coap: downloading \"%s\"\n", url);
-    ssize_t size = suit_coap_get_blockwise_url_buf(url, COAP_BLOCKSIZE_64,
+    ssize_t size = suit_coap_get_blockwise_url_buf(url, CONFIG_SUIT_COAP_BLOCKSIZE,
                                                    _manifest_buf,
                                                    SUIT_MANIFEST_BUFSIZE);
     if (size >= 0) {

@@ -15,6 +15,7 @@
  * @author Martine Lenders <m.lenders@fu-berlin.de>
  */
 
+#include <assert.h>
 #include <errno.h>
 
 #include "utlist.h"
@@ -34,7 +35,7 @@
 
 #include "net/gnrc/ipv6/ext.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**
@@ -344,7 +345,7 @@ gnrc_pktsnip_t *gnrc_ipv6_ext_build(gnrc_pktsnip_t *ipv6, gnrc_pktsnip_t *next,
     }
 
     if (ipv6 != NULL) {
-        LL_SEARCH_SCALAR(ipv6, prev, next, next);
+        prev = gnrc_pkt_prev_snip(ipv6, next);
 
         if (prev == NULL) {
             return NULL;

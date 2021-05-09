@@ -37,8 +37,7 @@ else ifeq ($(KINETIS_CORE), D)
   CPU_CORE = cortex-m4
 else ifeq ($(KINETIS_CORE), F)
   # Cortex-M4F or Cortex-M7
-  # TODO: Add floating point support
-  CPU_CORE = cortex-m4
+  CPU_CORE = cortex-m4f
 endif
 
 # For the rest of the build system we expose the series as family
@@ -104,6 +103,27 @@ ifeq ($(KINETIS_SERIES),K)
     # There seems to be a cap on SRAM_L at 64 kB across the whole K series
     KINETIS_SRAM_L_SIZE = 64
   endif
+else ifeq ($(KINETIS_SERIES),L)
+  ifeq ($(KINETIS_FAMILY),8)
+    # KL81, KL82
+    KINETIS_RAMSIZE = 96
+  else ifeq ($(KINETIS_SUBFAMILY),7)
+    # KL17, KL27
+    ifeq ($(KINETIS_ROMSIZE),256)
+      KINETIS_RAMSIZE = 32
+    else
+      KINETIS_RAMSIZE = $(KINETIS_ROMSIZE)/4
+    endif
+  else ifeq ($(KINETIS_FAMILY)$(KINETIS_SUBFAMILY),28)
+    # KL28
+    KINETIS_RAMSIZE = 128
+  else ifeq ($(KINETIS_FAMILY)$(KINETIS_SUBFAMILY),03)
+    # KL03
+    KINETIS_RAMSIZE = 2
+  else
+    KINETIS_RAMSIZE = $(KINETIS_ROMSIZE)/8
+  endif
+  KINETIS_SRAM_L_SIZE = $(KINETIS_RAMSIZE)/4
 else ifeq ($(KINETIS_SERIES),W)
   KINETIS_RAMSIZE = $(KINETIS_ROMSIZE)/8
   ifeq ($(KINETIS_CORE),D)

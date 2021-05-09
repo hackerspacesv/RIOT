@@ -23,10 +23,11 @@
 #include "net/gnrc.h"
 #include "gnrc_netif_xbee.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    0
 #include "debug.h"
 
-#define BCAST   (GNRC_NETIF_HDR_FLAGS_BROADCAST | GNRC_NETIF_HDR_FLAGS_MULTICAST)
+#define BCAST           (GNRC_NETIF_HDR_FLAGS_BROADCAST | \
+                         GNRC_NETIF_HDR_FLAGS_MULTICAST)
 
 static gnrc_pktsnip_t *xbee_adpt_recv(gnrc_netif_t *netif)
 {
@@ -95,9 +96,7 @@ static gnrc_pktsnip_t *xbee_adpt_recv(gnrc_netif_t *netif)
     DEBUG("[xbee-gnrc] recv: successfully parsed packet\n");
 
     /* and append the netif header */
-    LL_APPEND(payload, netif_snip);
-
-    return payload;
+    return gnrc_pkt_append(payload, netif_snip);
 }
 
 static int xbee_adpt_send(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)

@@ -12,6 +12,8 @@
  * @file
  * @author  Martine Lenders <m.lenders@fu-berlin.de>
  */
+
+#include <assert.h>
 #include <kernel_defines.h>
 
 #include "net/gnrc/netif/internal.h"
@@ -21,7 +23,7 @@
 #include "_nib-6ln.h"
 #include "_nib-6lr.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #if IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_6LN)
@@ -161,11 +163,9 @@ uint8_t _handle_aro(gnrc_netif_t *netif, const ipv6_hdr_t *ipv6,
         (void)nce;
 #endif  /* CONFIG_GNRC_IPV6_NIB_6LR */
     }
-#if ENABLE_DEBUG
     else if (aro->len != SIXLOWPAN_ND_OPT_AR_LEN) {
         DEBUG("nib: ARO of unexpected length %u, ignoring ARO\n", aro->len);
     }
-#endif  /* ENABLE_DEBUG */
     return _ADDR_REG_STATUS_IGNORE;
 }
 

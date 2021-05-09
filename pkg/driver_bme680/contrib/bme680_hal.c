@@ -19,6 +19,7 @@
  * @author      Gunar Schorcht <gunar@schorcht.net>
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -44,7 +45,7 @@
 
 void bme680_ms_sleep(uint32_t msleep)
 {
-    xtimer_usleep(msleep * US_PER_MS);
+    xtimer_msleep(msleep);
 }
 
 #ifdef MODULE_PERIPH_I2C

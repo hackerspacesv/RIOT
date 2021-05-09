@@ -21,9 +21,11 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <inttypes.h>
 
+#include "timex.h"
 #include "net/sock/udp.h"
 #include "tinydtls_keys.h"
 
@@ -31,7 +33,7 @@
 #include "dtls_debug.h"
 #include "dtls.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifndef DTLS_DEFAULT_PORT
@@ -129,7 +131,7 @@ static int dtls_handle_read(dtls_context_t *ctx)
 
     memcpy(&session.addr, &remote.addr.ipv6, sizeof(session.addr));
 
-    if (ENABLE_DEBUG) {
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
         DEBUG("DBG-Client: Msg received from \n\t Addr Src: [");
         ipv6_addr_print(&session.addr);
         DEBUG("]:%u\n", remote.port);

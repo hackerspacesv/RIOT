@@ -8,13 +8,15 @@ able to send and receive LoRaWAN packets and perform basic LoRaWAN commands
 The MAC layers still doesn't implement any duty cycle restriction mechanism.
 However, it respects the retransmission procedure.
 
-Only Class A and EU868 region are supported so far.
+Only Class A in EU868 and IN865 regions are supported so far.
 
 Usage
 =====
 
 It's necessary to join the LoRaWAN network either via OTAA or ABP.
 All keys, addresses and EUIs are in network endian (big endian).
+The application listens to downlinks on Port 2 by default.
+Region need to be set in the Makefile.
 
 ## OTAA
 
@@ -28,6 +30,7 @@ ifconfig 3 set appeui BBBBBBBBBBBBBBBB
 ifconfig 3 set appkey CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 ifconfig 3 up
 ```
+If Chirpstack is being used, the AppEUI is ignored.
 
 Wait for 5-6 seconds. Type `ifconfig`. The link status should be `up`:
 
@@ -60,12 +63,12 @@ select join mode and type `ifconfig <if_pid> up`.
 E.g in the application Makefile:
 
 ```
-CFLAGS += -DLORAMAC_DEV_EUI_DEFAULT=\{0xAA\,0xAA\,0xAA\,0xAA\,0xAA\,0xAA\,0xAA\,0xAA\}
-CFLAGS += -DLORAMAC_APP_EUI_DEFAULT=\{0xBB\,0xBB\,0xBB\,0xBB\,0xBB\,0xBB\,0xBB\,0xBB\}
-CFLAGS += -DLORAMAC_APP_KEY_DEFAULT=\{0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\,0xCC\}
-CFLAGS += -DLORAMAC_APP_SKEY_DEFAULT=\{0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\,0xDD\}
-CFLAGS += -DLORAMAC_NWK_SKEY_DEFAULT=\{0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\,0xEE\}
-CFLAGS += -DLORAMAC_DEV_ADDR_DEFAULT=\{0xFF\,0xFF\,0xFF\,0xFF\}
+CFLAGS += -DCONFIG_LORAMAC_DEV_EUI_DEFAULT=\"AAAAAAAAAAAAAAAA\"
+CFLAGS += -DCONFIG_LORAMAC_APP_EUI_DEFAULT=\"BBBBBBBBBBBBBBBB\"
+CFLAGS += -DCONFIG_LORAMAC_APP_KEY_DEFAULT=\"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\"
+CFLAGS += -DCONFIG_LORAMAC_APP_SKEY_DEFAULT=\"DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\"
+CFLAGS += -DCONFIG_LORAMAC_NWK_SKEY_DEFAULT=\"EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\"
+CFLAGS += -DCONFIG_LORAMAC_DEV_ADDR_DEFAULT=\"FFFFFFFF\"
 ```
 
 ## Send data

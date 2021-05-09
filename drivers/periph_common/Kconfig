@@ -115,20 +115,16 @@ config MODULE_PERIPH_INIT_QDEC
     default y if MODULE_PERIPH_INIT
     depends on MODULE_PERIPH_QDEC
 
-config MODULE_PERIPH_RTC
-    bool "RTC peripheral driver"
-    depends on HAS_PERIPH_RTC
-    select MODULE_PERIPH_COMMON
-
-config MODULE_PERIPH_INIT_RTC
-    bool "Auto initialize RTC peripheral"
-    default y if MODULE_PERIPH_INIT
-    depends on MODULE_PERIPH_RTC
+rsource "Kconfig.rtc"
 
 config MODULE_PERIPH_RTT
     bool "RTT peripheral driver"
     depends on HAS_PERIPH_RTT
     select MODULE_PERIPH_COMMON
+
+config MODULE_PERIPH_RTT_SET_COUNTER
+    bool "rtc_set_counter() implementation in the RTT peripheral driver"
+    depends on HAS_PERIPH_RTT_SET_COUNTER && MODULE_PERIPH_RTT
 
 config MODULE_PERIPH_INIT_RTT
     bool "Auto initialize RTT peripheral"
@@ -136,6 +132,16 @@ config MODULE_PERIPH_INIT_RTT
     depends on MODULE_PERIPH_RTT
 
 rsource "Kconfig.spi"
+
+config MODULE_PERIPH_TEMPERATURE
+    bool "Temperature peripheral driver"
+    depends on HAS_PERIPH_TEMPERATURE
+    select MODULE_PERIPH_COMMON
+
+config MODULE_PERIPH_INIT_TEMPERATURE
+    bool "Auto initialize temperature peripheral"
+    default y if MODULE_PERIPH_INIT
+    depends on MODULE_PERIPH_TEMPERATURE
 
 rsource "Kconfig.uart"
 

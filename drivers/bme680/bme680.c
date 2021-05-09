@@ -18,6 +18,8 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "bme680.h"
 #include "bme680_hal.h"
 #include "bme680_params.h"
@@ -32,7 +34,7 @@
 #include "periph/spi.h"
 #endif
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 unsigned int bme680_devs_numof = 0;

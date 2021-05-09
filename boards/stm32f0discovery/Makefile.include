@@ -5,11 +5,10 @@ INCLUDES += -I$(RIOTBASE)/boards/common/stm32/include
 PORT_LINUX ?= /dev/ttyUSB0
 PORT_DARWIN ?= $(firstword $(sort $(wildcard /dev/tty.SLAB_USBtoUART*)))
 
-# setup serial terminal
-include $(RIOTMAKE)/tools/serial.inc.mk
-
-DEBUG_ADAPTER ?= stlink
+# this board uses openocd
+PROGRAMMER ?= openocd
+OPENOCD_DEBUG_ADAPTER ?= stlink
 STLINK_VERSION ?= 2
 
-# this board uses openocd
-include $(RIOTMAKE)/tools/openocd.inc.mk
+# openocd programmer is supported
+PROGRAMMERS_SUPPORTED += openocd

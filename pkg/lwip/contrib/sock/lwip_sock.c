@@ -23,6 +23,7 @@
 
 #include "lwip/err.h"
 #include "lwip/ip.h"
+#include "lwip/netif.h"
 #include "lwip/tcp.h"
 #include "lwip/netif.h"
 #include "lwip/opt.h"
@@ -97,10 +98,12 @@ static bool _ep_isany(const struct _sock_tl_ep *ep)
 
 static const ip_addr_t *_netif_to_bind_addr(int family, uint16_t netif_num)
 {
+    struct netif *netif;
     if (netif_num > UINT8_MAX) {
         return NULL;
     }
-    for (struct netif *netif = netif_list; netif != NULL; netif = netif->next) {
+    /* cppcheck-suppress uninitvar ; assigned by macro */
+    NETIF_FOREACH(netif) {
         if (netif->num == (netif_num - 1)) {
             switch (family) {
 #if LWIP_IPV4
@@ -122,9 +125,11 @@ static const ip_addr_t *_netif_to_bind_addr(int family, uint16_t netif_num)
 
 static bool _addr_on_netif(int family, int netif_num, const ip_addr_t *addr)
 {
+    struct netif *netif;
     assert(addr != NULL);
     assert((netif_num >= 0) && (netif_num <= UINT8_MAX));
-    for (struct netif *netif = netif_list; netif != NULL; netif = netif->next) {
+    /* cppcheck-suppress uninitvar ; assigned by macro */
+    NETIF_FOREACH(netif) {
         if (netif->num == (netif_num - 1)) {
             switch (family) {
 #if LWIP_IPV4
@@ -283,10 +288,10 @@ static void _netconn_cb(struct netconn *conn, enum netconn_evt evt,
                         default:
                             break;
                     }
-                    if (cib_avail(&conn->acceptmbox.mbox.cib)) {
+                    if (mbox_avail(&conn->acceptmbox.mbox)) {
                         flags |= SOCK_ASYNC_CONN_RECV;
                     }
-                    if (cib_avail(&conn->recvmbox.mbox.cib)) {
+                    if (mbox_avail(&conn->recvmbox.mbox)) {
                         flags |= SOCK_ASYNC_MSG_RECV;
                     }
 #endif
@@ -340,6 +345,7 @@ static int _create(int type, int proto, uint16_t flags, struct netconn **out)
     return 0;
 }
 
+#include <assert.h>
 #include <stdio.h>
 
 int lwip_sock_create(struct netconn **conn, const struct _sock_tl_ep *local,
@@ -438,7 +444,9 @@ uint16_t lwip_sock_bind_addr_to_netif(const ip_addr_t *bind_addr)
     assert(bind_addr != NULL);
 
     if (!ip_addr_isany(bind_addr)) {
-        for (struct netif *netif = netif_list; netif != NULL; netif = netif->next) {
+        struct netif *netif;
+        /* cppcheck-suppress uninitvar ; assigned by macro */
+        NETIF_FOREACH(netif) {
             if (IP_IS_V6(bind_addr)) {  /* XXX crappy API yields crappy code */
 #if LWIP_IPV6
                 if (netif_get_ip6_addr_match(netif, ip_2_ip6(bind_addr)) >= 0) {
@@ -523,7 +531,7 @@ int lwip_sock_recv(struct netconn *conn, uint32_t timeout, struct netbuf **buf)
     }
     else
 #endif
-    if ((timeout == 0) && !cib_avail(&conn->recvmbox.mbox.cib)) {
+    if ((timeout == 0) && !mbox_avail(&conn->recvmbox.mbox)) {
         return -EAGAIN;
     }
     switch (netconn_recv(conn, buf)) {
@@ -549,7 +557,7 @@ int lwip_sock_recv(struct netconn *conn, uint32_t timeout, struct netbuf **buf)
 #if IS_ACTIVE(SOCK_HAS_ASYNC)
     lwip_sock_base_t *sock = netconn_get_callback_arg(conn);
 
-    if (sock && sock->async_cb.gen && cib_avail(&conn->recvmbox.mbox.cib)) {
+    if (sock && sock->async_cb.gen && mbox_avail(&conn->recvmbox.mbox)) {
         sock->async_cb.gen(sock, SOCK_ASYNC_MSG_RECV, sock->async_cb_arg);
     }
 #endif

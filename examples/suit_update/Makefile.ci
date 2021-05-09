@@ -6,6 +6,7 @@ BOARD_INSUFFICIENT_MEMORY := \
     atmega328p \
     b-l072z-lrwan1 \
     e104-bt5010a-tb \
+    e104-bt5011a-tb \
     lsn50 \
     msb-430 \
     msb-430h \
@@ -24,6 +25,8 @@ BOARD_INSUFFICIENT_MEMORY := \
     nucleo-l412kb \
     saml10-xpro \
     saml11-xpro \
+    slstk3400a \
+    stk3200 \
     stm32f0discovery \
     telosb \
     waspmote-pro \

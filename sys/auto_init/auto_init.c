@@ -58,6 +58,11 @@ void auto_init(void)
         extern void auto_init_event_thread(void);
         auto_init_event_thread();
     }
+    if (IS_USED(MODULE_SYS_BUS)) {
+        LOG_DEBUG("Auto init system buses.\n");
+        extern void auto_init_sys_bus(void);
+        auto_init_sys_bus();
+    }
     if (IS_USED(MODULE_MCI)) {
         LOG_DEBUG("Auto init mci.\n");
         extern void mci_initialize(void);
@@ -112,6 +117,11 @@ void auto_init(void)
         LOG_DEBUG("Bootstrapping openwsn.\n");
         extern void openwsn_bootstrap(void);
         openwsn_bootstrap();
+    }
+    if (IS_USED(MODULE_AUTO_INIT_UWB_CORE)) {
+        LOG_DEBUG("Bootstrapping uwb core.\n");
+        extern void uwb_core_init(void);
+        uwb_core_init();
     }
     if (IS_USED(MODULE_GCOAP) &&
         !IS_ACTIVE(CONFIG_GCOAP_NO_AUTO_INIT)) {
@@ -259,5 +269,11 @@ void auto_init(void)
             extern void auto_init_dfplayer(void);
             auto_init_dfplayer();
         }
+    }
+
+    if (IS_USED(MODULE_AUTO_INIT_SCREEN)) {
+        LOG_DEBUG("Auto init screen devices\n");
+        extern void auto_init_screen(void);
+        auto_init_screen();
     }
 }

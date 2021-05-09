@@ -17,6 +17,8 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "adcxx1c.h"
 #include "adcxx1c_params.h"
 #include "adcxx1c_regs.h"
@@ -24,7 +26,7 @@
 #include "periph/i2c.h"
 #include "periph/gpio.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define DEV (dev->params.i2c)

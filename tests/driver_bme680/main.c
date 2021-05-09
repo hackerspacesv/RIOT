@@ -55,6 +55,7 @@ int main(void)
         printf("Initialize BME680 sensor %u ... ", i);
         if (bme680_init(&dev[i], &bme680_params[i]) != BME680_OK) {
             puts("failed");
+            return -1;
         }
         else {
             puts("OK");
@@ -75,7 +76,7 @@ int main(void)
             /* get the duration for the measurement */
             int duration = bme680_get_duration(&dev[i]);
             /* wait for the duration */
-            xtimer_usleep(duration * US_PER_MS);
+            xtimer_msleep(duration);
             /* read the data */
             int res = bme680_get_data(&dev[i], &data);
 

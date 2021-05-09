@@ -50,7 +50,7 @@ static timer_isr_ctx_t isr_ctx[TIMER_NUMOF];
 /**
  * @brief   Check whether device is a using a WTIMER device (32-bit)
  */
-static inline bool _is_wtimer(timer_t dev)
+static inline bool _is_wtimer(tim_t dev)
 {
 #if defined(WTIMER_COUNT) && WTIMER_COUNT > 0
     return ((uint32_t) timer_config[dev].timer.dev) >= WTIMER0_BASE;
@@ -63,7 +63,7 @@ static inline bool _is_wtimer(timer_t dev)
 /**
  * @brief   Check whether dev is using a LETIMER device
  */
-static inline bool _is_letimer(timer_t dev)
+static inline bool _is_letimer(tim_t dev)
 {
 #if defined(LETIMER_COUNT) && LETIMER_COUNT > 0
     return ((uint32_t) timer_config[dev].timer.dev) == LETIMER0_BASE;
@@ -73,7 +73,7 @@ static inline bool _is_letimer(timer_t dev)
 #endif
 }
 
-static void _letimer_init(tim_t dev, unsigned long freq)
+static void _letimer_init(tim_t dev, uint32_t freq)
 {
     (void) freq;
 #if LETIMER_COUNT
@@ -98,7 +98,7 @@ static void _letimer_init(tim_t dev, unsigned long freq)
 #endif
 }
 
-static void _timer_init(tim_t dev, unsigned long freq)
+static void _timer_init(tim_t dev, uint32_t freq)
 {
     TIMER_TypeDef *pre, *tim;
 
@@ -143,7 +143,7 @@ static void _timer_init(tim_t dev, unsigned long freq)
     TIMER_IntEnable(tim, TIMER_IEN_CC0 | TIMER_IEN_CC1 | TIMER_IEN_CC2);
 }
 
-int timer_init(tim_t dev, unsigned long freq, timer_cb_t callback, void *arg)
+int timer_init(tim_t dev, uint32_t freq, timer_cb_t callback, void *arg)
 {
     /* test if given timer device is valid */
     if (dev >= TIMER_NUMOF) {
@@ -336,3 +336,17 @@ void TIMER_1_ISR(void)
     _timer_isr(1);
 }
 #endif /* TIMER_1_ISR */
+
+#ifdef TIMER_2_ISR
+void TIMER_2_ISR(void)
+{
+    _timer_isr(2);
+}
+#endif /* TIMER_2_ISR */
+
+#ifdef TIMER_3_ISR
+void TIMER_3_ISR(void)
+{
+    _timer_isr(3);
+}
+#endif /* TIMER_3_ISR */

@@ -18,7 +18,7 @@
 
 #ifdef MODULE_ESP_ETH
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 #include "log.h"
 #include "tools.h"
@@ -55,6 +55,10 @@
 #ifdef EMAC_PHY_LAN8720
 #include "eth_phy/phy_lan8720.h"
 #define EMAC_ETHERNET_PHY_CONFIG phy_lan8720_default_ethernet_config
+#endif
+#ifdef EMAC_PHY_IP101G
+#include "eth_phy/phy_ip101g.h"
+#define EMAC_ETHERNET_PHY_CONFIG phy_ip101g_default_ethernet_config
 #endif
 #ifdef EMAC_PHY_TLK110
 #include "eth_phy/phy_tlk110.h"
@@ -96,10 +100,15 @@ static esp_err_t IRAM_ATTR _eth_input_callback(void *buffer, uint16_t len, void 
 
     mutex_lock(&_esp_eth_dev.dev_lock);
 
-    memcpy(_esp_eth_dev.rx_buf, buffer, len);
-    _esp_eth_dev.rx_len = len;
-    _esp_eth_dev.event = SYSTEM_EVENT_ETH_RX_DONE;
-    netdev_trigger_event_isr(&_esp_eth_dev.netdev);
+    /* Don't overwrite other events, drop packet instead.
+     * Keep the latest received packet if previous has not been read. */
+    if (_esp_eth_dev.event == SYSTEM_EVENT_MAX ||
+        _esp_eth_dev.event == SYSTEM_EVENT_ETH_RX_DONE) {
+        memcpy(_esp_eth_dev.rx_buf, buffer, len);
+        _esp_eth_dev.rx_len = len;
+        _esp_eth_dev.event = SYSTEM_EVENT_ETH_RX_DONE;
+        netdev_trigger_event_isr(&_esp_eth_dev.netdev);
+    }
 
     mutex_unlock(&_esp_eth_dev.dev_lock);
 
@@ -203,10 +212,10 @@ static int _esp_eth_send(netdev_t *netdev, const iolist_t *iolist)
         }
     }
 
-    #if ENABLE_DEBUG
-    printf ("%s: send %d byte\n", __func__, dev->tx_len);
-    /* esp_hexdump (dev->tx_buf, dev->tx_len, 'b', 16); */
-    #endif
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        printf ("%s: send %d byte\n", __func__, dev->tx_len);
+        /* esp_hexdump (dev->tx_buf, dev->tx_len, 'b', 16); */
+    }
 
     int ret = 0;
 
@@ -253,9 +262,9 @@ static int _esp_eth_recv(netdev_t *netdev, void *buf, size_t len, void *info)
         return -ENOBUFS;
     }
 
-    #if ENABLE_DEBUG
-    /* esp_hexdump (dev->rx_buf, dev->rx_len, 'b', 16); */
-    #endif
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        esp_hexdump (dev->rx_buf, dev->rx_len, 'b', 16);
+    }
 
     /* copy received date and reset the receive length */
     memcpy(buf, dev->rx_buf, dev->rx_len);

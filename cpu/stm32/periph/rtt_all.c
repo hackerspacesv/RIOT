@@ -19,6 +19,8 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "cpu.h"
 #include "irq.h"
 #include "periph/rtt.h"
@@ -52,7 +54,7 @@
 #if defined(CPU_FAM_STM32F4) || defined(CPU_FAM_STM32F7)
 #define CLOCK_SRC_REG       RCC->DCKCFGR2
 #define CLOCK_SRC_MASK      RCC_DCKCFGR2_LPTIM1SEL
-#if CLOCK_LSE
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
 #define CLOCK_SRC_CFG       (RCC_DCKCFGR2_LPTIM1SEL_1 | RCC_DCKCFGR2_LPTIM1SEL_0)
 #else
 #define CLOCK_SRC_CFG       (RCC_DCKCFGR2_LPTIM1SEL_0)
@@ -60,7 +62,7 @@
 #else
 #define CLOCK_SRC_REG       RCC->CCIPR
 #define CLOCK_SRC_MASK      RCC_CCIPR_LPTIM1SEL
-#if CLOCK_LSE
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
 #define CLOCK_SRC_CFG       (RCC_CCIPR_LPTIM1SEL_1 | RCC_CCIPR_LPTIM1SEL_0)
 #else
 #define CLOCK_SRC_CFG       (RCC_CCIPR_LPTIM1SEL_0)
@@ -181,6 +183,11 @@ void rtt_set_alarm(uint32_t alarm, rtt_cb_t cb, void *arg)
     LPTIM1->CMP = (uint16_t)alarm;
     while (!(LPTIM1->ISR & LPTIM_ISR_CMPOK)) {}
     irq_restore(is);
+}
+
+uint32_t rtt_get_alarm(void)
+{
+    return LPTIM1->CMP;
 }
 
 void rtt_clear_alarm(void)

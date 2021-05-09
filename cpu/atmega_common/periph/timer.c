@@ -20,6 +20,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <avr/interrupt.h>
 
 #include "board.h"
@@ -30,7 +31,7 @@
 #include "periph/timer.h"
 #include "periph_conf.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**
@@ -94,7 +95,7 @@ static inline bool is_oneshot(tim_t tim, int chan)
 /**
  * @brief Setup the given timer
  */
-int timer_init(tim_t tim, unsigned long freq, timer_cb_t cb, void *arg)
+int timer_init(tim_t tim, uint32_t freq, timer_cb_t cb, void *arg)
 {
 /*
  * A debug pin can be used to probe timer interrupts with an oscilloscope or
@@ -276,7 +277,7 @@ static inline void _isr(tim_t tim, int chan)
     DEBUG_TIMER_PORT |= (1 << DEBUG_TIMER_PIN);
 #endif
 
-    atmega_enter_isr();
+    avr8_enter_isr();
 
     if (is_oneshot(tim, chan)) {
         *ctx[tim].mask &= ~(1 << (chan + OCIE1A));
@@ -287,7 +288,7 @@ static inline void _isr(tim_t tim, int chan)
     DEBUG_TIMER_PORT &= ~(1 << DEBUG_TIMER_PIN);
 #endif
 
-    atmega_exit_isr();
+    avr8_exit_isr();
 }
 #endif
 

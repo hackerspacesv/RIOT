@@ -30,7 +30,7 @@
 #include "thread.h"
 #include "xtimer.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**
@@ -321,7 +321,7 @@ static int _send(dfplayer_t *dev, uint8_t cmd, uint8_t p1, uint8_t p2,
         }
 
         /* wait to work around HW bug */
-        xtimer_usleep(DFPLAYER_SEND_DELAY_MS * US_PER_MS);
+        xtimer_msleep(DFPLAYER_SEND_DELAY_MS);
 
         if (!retval) {
             break;
@@ -416,13 +416,12 @@ int dfplayer_file_cmd(dfplayer_t *dev, uint8_t cmd, uint8_t p1, uint8_t p2)
          * We just check if the DFPlayer is actually playing
          */
         if (gpio_is_valid(dev->busy_pin)) {
+            retval = 0;
             /* Using BUSY pin to check if device is playing */
             if (gpio_read(dev->busy_pin)) {
                 /* Device not playing, file does not exist */
                 retval = -ENOENT;
             }
-
-            retval = 0;
         }
         else {
             /* BUSY pin not connected, query status instead */

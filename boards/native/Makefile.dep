@@ -1,14 +1,15 @@
 ifneq (,$(filter netdev_default,$(USEMODULE)))
-  USEMODULE += netdev_tap
+  ifeq (,$(filter socket_zep,$(USEMODULE)))
+    USEMODULE += netdev_tap
+  endif
 endif
 
 ifneq (,$(filter mtd,$(USEMODULE)))
   USEMODULE += mtd_native
 endif
 
-ifneq (,$(filter can,$(USEMODULE)))
+ifneq (,$(filter periph_can,$(FEATURES_USED)))
   ifeq ($(OS),Linux)
-    USEMODULE += can_linux
     CFLAGS += -DCAN_DLL_NUMOF=2
   endif
 endif
@@ -20,4 +21,4 @@ ifneq (,$(filter socket_zep,$(USEMODULE)))
   USEMODULE += random
 endif
 
-USEMODULE += native-drivers
+USEMODULE += native_drivers

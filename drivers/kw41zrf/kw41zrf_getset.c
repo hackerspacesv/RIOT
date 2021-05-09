@@ -16,6 +16,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include "log.h"
@@ -26,7 +27,7 @@
 #include "kw41zrf_getset.h"
 #include "vendor/MKW41Z4.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define KW41ZRF_NUM_CHANNEL      (KW41ZRF_MAX_CHANNEL - KW41ZRF_MIN_CHANNEL + 1)
@@ -194,7 +195,6 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint8_t option, uint8_t state)
             case KW41ZRF_OPT_PROMISCUOUS:
             case KW41ZRF_OPT_AUTOACK:
             case KW41ZRF_OPT_ACK_PENDING:
-            case KW41ZRF_OPT_TELL_RX_START:
                 LOG_ERROR("[kw41zrf] Attempt to modify option %04x while radio is sleeping\n",
                           (unsigned) option);
                 assert(0);
@@ -233,22 +233,6 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint8_t option, uint8_t state)
                 bit_set32(&ZLL->SAM_TABLE, ZLL_SAM_TABLE_ACK_FRM_PND_SHIFT);
                 break;
 
-            case KW41ZRF_OPT_TELL_RX_START:
-                DEBUG("[kw41zrf] enable: TELL_RX_START\n");
-                bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_RX_WMRK_MSK_SHIFT);
-                break;
-
-            case KW41ZRF_OPT_TELL_RX_END:
-                DEBUG("[kw41zrf] enable: TELL_RX_END\n");
-                break;
-
-            case KW41ZRF_OPT_TELL_TX_END:
-                DEBUG("[kw41zrf] enable: TELL_TX_END\n");
-                break;
-
-            case KW41ZRF_OPT_TELL_TX_START:
-                DEBUG("[kw41zrf] enable: TELL_TX_START (ignored)\n");
-
             default:
                 /* do nothing */
                 break;
@@ -279,21 +263,6 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint8_t option, uint8_t state)
                 bit_clear32(&ZLL->SAM_TABLE, ZLL_SAM_TABLE_ACK_FRM_PND_SHIFT);
                 break;
 
-            case KW41ZRF_OPT_TELL_RX_START:
-                DEBUG("[kw41zrf] disable: TELL_RX_START\n");
-                bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_RX_WMRK_MSK_SHIFT);
-                break;
-
-            case KW41ZRF_OPT_TELL_RX_END:
-                DEBUG("[kw41zrf] disable: TELL_RX_END\n");
-                break;
-
-            case KW41ZRF_OPT_TELL_TX_END:
-                DEBUG("[kw41zrf] disable: TELL_TX_END\n");
-                break;
-
-            case KW41ZRF_OPT_TELL_TX_START:
-                DEBUG("[kw41zrf] disable: TELL_TX_START (ignored)\n");
             default:
                 /* do nothing */
                 break;

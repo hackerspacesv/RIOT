@@ -13,6 +13,7 @@
  * @author  Martine Lenders <m.lenders@fu-berlin.de>
  */
 
+#include <assert.h>
 #include <errno.h>
 
 #include "net/ipv4/addr.h"
@@ -22,8 +23,9 @@
 
 #include "lwip/api.h"
 #include "lwip/opt.h"
-#include "lwip/sys.h"
 #include "lwip/sock_internal.h"
+#include "lwip/sys.h"
+#include "lwip/udp.h"
 
 int sock_udp_create(sock_udp_t *sock, const sock_udp_ep_t *local,
                     const sock_udp_ep_t *remote, uint16_t flags)
@@ -68,8 +70,9 @@ int sock_udp_get_remote(sock_udp_t *sock, sock_udp_ep_t *ep)
                                0)) ? -ENOTCONN : 0;
 }
 
-ssize_t sock_udp_recv(sock_udp_t *sock, void *data, size_t max_len,
-                      uint32_t timeout, sock_udp_ep_t *remote)
+ssize_t sock_udp_recv_aux(sock_udp_t *sock, void *data, size_t max_len,
+                          uint32_t timeout, sock_udp_ep_t *remote,
+                          sock_udp_aux_rx_t *aux)
 {
     void *pkt = NULL;
     void *ctx = NULL;
@@ -78,8 +81,8 @@ ssize_t sock_udp_recv(sock_udp_t *sock, void *data, size_t max_len,
     bool nobufs = false;
 
     assert((sock != NULL) && (data != NULL) && (max_len > 0));
-    while ((res = sock_udp_recv_buf(sock, &pkt, &ctx, timeout,
-                                    remote)) > 0) {
+    while ((res = sock_udp_recv_buf_aux(sock, &pkt, &ctx, timeout,
+                                        remote, aux)) > 0) {
         struct netbuf *buf = ctx;
         if (buf->p->tot_len > (ssize_t)max_len) {
             nobufs = true;
@@ -94,9 +97,11 @@ ssize_t sock_udp_recv(sock_udp_t *sock, void *data, size_t max_len,
     return (nobufs) ? -ENOBUFS : ((res < 0) ? res : ret);
 }
 
-ssize_t sock_udp_recv_buf(sock_udp_t *sock, void **data, void **ctx,
-                          uint32_t timeout, sock_udp_ep_t *remote)
+ssize_t sock_udp_recv_buf_aux(sock_udp_t *sock, void **data, void **ctx,
+                              uint32_t timeout, sock_udp_ep_t *remote,
+                              sock_udp_aux_rx_t *aux)
 {
+    (void)aux;
     struct netbuf *buf;
     int res;
 
@@ -117,38 +122,51 @@ ssize_t sock_udp_recv_buf(sock_udp_t *sock, void **data, void **ctx,
     if ((res = lwip_sock_recv(sock->base.conn, timeout, &buf)) < 0) {
         return res;
     }
-    if (remote != NULL) {
+    if ((remote != NULL) ||
+        ((aux != NULL) && IS_USED(MODULE_SOCK_AUX_LOCAL)
+                       && IS_ACTIVE(LWIP_NETBUF_RECVINFO))) {
         /* convert remote */
-        size_t addr_len;
+        size_t addr_len = sizeof(ipv4_addr_t);
+        int family = AF_INET;
         if (NETCONNTYPE_ISIPV6(sock->base.conn->type)) {
             addr_len = sizeof(ipv6_addr_t);
-            remote->family = AF_INET6;
+            family = AF_INET6;
         }
-        else if (IS_ACTIVE(LWIP_IPV4)) {
-            addr_len = sizeof(ipv4_addr_t);
-            remote->family = AF_INET;
-        }
-        else {
+        else if (!IS_ACTIVE(LWIP_IPV4)) {
             netbuf_delete(buf);
             return -EPROTO;
         }
+        if (remote != NULL) {
+            remote->family = family;
 #if LWIP_NETBUF_RECVINFO
-        remote->netif = lwip_sock_bind_addr_to_netif(&buf->toaddr);
+            remote->netif = lwip_sock_bind_addr_to_netif(&buf->toaddr);
 #else
-        remote->netif = SOCK_ADDR_ANY_NETIF;
+            remote->netif = SOCK_ADDR_ANY_NETIF;
 #endif
-        /* copy address */
-        memcpy(&remote->addr, &buf->addr, addr_len);
-        remote->port = buf->port;
+            /* copy address */
+            memcpy(&remote->addr, &buf->addr, addr_len);
+            remote->port = buf->port;
+        }
+#if IS_USED(MODULE_SOCK_AUX_LOCAL)
+    static_assert(IS_ACTIVE(LWIP_NETBUF_RECVINFO),
+                  "sock_aux_local depends on LWIP_NETBUF_RECVINFO");
+    if ((aux != NULL) && (aux->flags & SOCK_AUX_GET_LOCAL)) {
+        aux->flags &= ~(SOCK_AUX_GET_LOCAL);
+        aux->local.family = family;
+        memcpy(&aux->local.addr, &buf->toaddr, addr_len);
+        aux->local.port = sock->base.conn->pcb.udp->local_port;
+    }
+#endif /* MODULE_SOCK_AUX_LOCAL */
     }
     *data = buf->ptr->payload;
     *ctx = buf;
     return (ssize_t)buf->ptr->len;
 }
 
-ssize_t sock_udp_send(sock_udp_t *sock, const void *data, size_t len,
-                      const sock_udp_ep_t *remote)
+ssize_t sock_udp_send_aux(sock_udp_t *sock, const void *data, size_t len,
+                          const sock_udp_ep_t *remote, sock_udp_aux_tx_t *aux)
 {
+    (void)aux;
     assert((sock != NULL) || (remote != NULL));
     assert((len == 0) || (data != NULL)); /* (len != 0) => (data != NULL) */
 

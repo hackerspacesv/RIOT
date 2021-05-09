@@ -39,7 +39,7 @@
 #include "kw2xrf_tm.h"
 #include "kw2xrf_intern.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define _MACACKWAITDURATION         (864 / 16) /* 864us * 62500Hz */
@@ -298,23 +298,10 @@ int _get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             return sizeof(netopt_enable_t);
 
         case NETOPT_RX_START_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_RX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_RX_END_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_RX_END);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_START_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_TX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_END_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_TX_END);
+            *((netopt_enable_t *)value) = NETOPT_ENABLE;
             return sizeof(netopt_enable_t);
 
         case NETOPT_AUTOCCA:
@@ -479,30 +466,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *value, size_t len)
         case NETOPT_PROMISCUOUSMODE:
             kw2xrf_set_option(dev, KW2XRF_OPT_PROMISCUOUS,
                               ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_RX_START_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_RX_START,
-                                 ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_RX_END_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_RX_END,
-                                 ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_START_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_TX_START,
-                                 ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_END_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_TX_END,
-                                 ((bool *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
@@ -798,7 +761,7 @@ static void _isr(netdev_t *netdev)
     }
     kw2xrf_write_dreg(dev, MKW2XDM_IRQSTS2, irqsts2);
 
-    if (ENABLE_DEBUG) {
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
         /* for debugging only */
         kw2xrf_read_dregs(dev, MKW2XDM_IRQSTS1, dregs, MKW2XDM_IRQSTS1 + 3);
         if (dregs[MKW2XDM_IRQSTS1] & 0x7f) {

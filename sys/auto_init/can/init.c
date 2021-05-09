@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #include "can/dll.h"
@@ -52,5 +52,10 @@ void auto_init_candev(void)
 #ifdef MODULE_PERIPH_CAN
     extern void auto_init_periph_can(void);
     auto_init_periph_can();
+#endif
+
+#ifdef MODULE_MCP2515
+    extern void auto_init_can_mcp2515(void);
+    auto_init_can_mcp2515();
 #endif
 }

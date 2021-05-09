@@ -757,6 +757,7 @@ INPUT                  = ../../doc.txt \
                          ../../core \
                          ../../cpu \
                          ../../boards \
+                         ../../bootloaders \
                          ../../drivers \
                          ../../pkg \
                          ../../sys \
@@ -772,6 +773,7 @@ INPUT                  = ../../doc.txt \
                          src/kconfig/kconfig.md \
                          src/using-cpp.md \
                          src/advanced-build-system-tricks.md \
+                         src/emulators.md \
                          src/changelog.md \
                          ../../LOSTANDFOUND.md
 
@@ -1144,6 +1146,7 @@ HTML_EXTRA_FILES       = src/css/bootstrap.min.css \
                          src/js/doxy-jquery.js \
                          src/js/jquery.min.js \
                          src/js/jquery.powertip.min.js \
+                         src/js/jquery.scrollTo.min.js \
                          src/js/jquery.smartmenus.min.js \
                          src/js/jquery.smartmenus.bootstrap.min.js \
                          src/js/jquery-ui.min.js \

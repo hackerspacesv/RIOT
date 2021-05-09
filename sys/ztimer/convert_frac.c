@@ -23,6 +23,7 @@
  */
 
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "frac.h"
 #include "assert.h"
@@ -30,7 +31,7 @@
 #include "ztimer/convert.h"
 #include "ztimer/convert_frac.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**
@@ -63,6 +64,7 @@ static uint32_t ztimer_convert_frac_op_now(ztimer_clock_t *z)
         return 0;
     }
     uint32_t scaled = frac_scale(&self->scale_now, lower_now);
+
     DEBUG("ztimer_convert_frac_op_now() %" PRIu32 "->%" PRIu32 "\n", lower_now,
           scaled);
     return scaled;

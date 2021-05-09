@@ -27,7 +27,7 @@
 #include "ot.h"
 #include "event.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define OPENTHREAD_SPINEL_FRAME_MARKER      (0x7e)
@@ -99,5 +99,10 @@ otError otPlatUartSend(const uint8_t *aBuf, uint16_t aBufLength)
     /* Tell OpenThread the sending of UART is done */
     otPlatUartSendDone();
 
+    return OT_ERROR_NONE;
+}
+
+otError otPlatUartFlush(void)
+{
     return OT_ERROR_NONE;
 }

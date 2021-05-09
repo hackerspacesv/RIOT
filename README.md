@@ -3,6 +3,7 @@
 [![License][license-badge]][license-link]
 [![API docs][api-badge]][api-link]
 [![Wiki][wiki-badge]][wiki-link]
+[![Merge chance][merge-chance-badge]][merge-chance-link]
 [![Stack Overflow questions][stackoverflow-badge]][stackoverflow-link]
 [![Twitter][twitter-badge]][twitter-link]
 [![IRC][irc-badge]][irc-link]
@@ -86,19 +87,12 @@ For specific toolchain installation, follow instructions in the
   version of the documentation is uploaded daily to
   [riot-os.org/api](https://riot-os.org/api).
 
-### USING THE NATIVE PORT WITH NETWORKING
-If you compile RIOT for the native cpu and include the `netdev_tap` module,
-you can specify a network interface like this: `PORT=tap0 make term`
+## FORUM
+Do you have a question, want to discuss a new feature, or just want to present
+your latest project using RIOT? Come over to our [forum] and post to your hearts
+content.
 
-#### SETTING UP A TAP NETWORK
-There is a shell script in `RIOT/dist/tools/tapsetup` called `tapsetup` which
-you can use to create a network of tap interfaces.
-
-*USAGE*
-
-To create a bridge and two (or `count` at your option) tap interfaces:
-
-    sudo ./dist/tools/tapsetup/tapsetup [-c [<count>]]
+[forum]: https://forum.riot-os.org
 
 ## CONTRIBUTE
 
@@ -135,6 +129,8 @@ https://www.riot-os.org
 [master-ci-link]: https://ci.riot-os.org/nightlies.html#master
 [matrix-badge]: https://img.shields.io/badge/chat-Matrix-brightgreen.svg
 [matrix-link]: https://matrix.to/#/#riot-os:matrix.org
+[merge-chance-badge]: https://img.shields.io/endpoint?url=https%3A%2F%2Fmerge-chance.info%2Fbadge%3Frepo%3DRIOT-OS/RIOT&color=informational
+[merge-chance-link]: https://merge-chance.info/target?repo=RIOT-OS/RIOT
 [release-badge]: https://img.shields.io/github/release/RIOT-OS/RIOT.svg
 [release-link]: https://github.com/RIOT-OS/RIOT/releases/latest
 [stackoverflow-badge]: https://img.shields.io/badge/stackoverflow-%5Briot--os%5D-yellow

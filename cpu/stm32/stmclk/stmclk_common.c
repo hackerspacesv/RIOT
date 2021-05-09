@@ -25,7 +25,7 @@
 
 #if defined(CPU_FAM_STM32L4) || defined(CPU_FAM_STM32F7) || \
     defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32G4) || \
-    defined(CPU_FAM_STM32G0)
+    defined(CPU_FAM_STM32G0) || defined(CPU_FAM_STM32L5)
 #define REG_PWR_CR          CR1
 #define BIT_CR_DBP          PWR_CR1_DBP
 #else
@@ -49,11 +49,8 @@
 #define RCC_CSR_LSIRDY          RCC_CSR_LSI1RDY
 #endif
 
-#ifndef CLOCK_HSE
-#define CLOCK_HSE   (0U)
-#endif
-#ifndef CLOCK_LSE
-#define CLOCK_LSE   (0U)
+#if defined(CPU_FAM_STM32L5)
+#define RCC_CFGR_SWS_HSI        RCC_CFGR_SWS_0
 #endif
 
 void stmclk_enable_hsi(void)
@@ -64,18 +61,12 @@ void stmclk_enable_hsi(void)
 
 void stmclk_disable_hsi(void)
 {
-    /* we only disable the HSI clock if not used as input for the PLL and if
-     * not used directly as system clock */
-    if (CLOCK_HSE) {
-        if ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {
-            RCC->CR &= ~(RCC_CR_HSION);
-        }
-    }
+    RCC->CR &= ~RCC_CR_HSION;
 }
 
 void stmclk_enable_lfclk(void)
 {
-    if (CLOCK_LSE) {
+    if (IS_ACTIVE(CONFIG_BOARD_HAS_LSE)) {
         stmclk_dbp_unlock();
         RCC->REG_LSE |= BIT_LSEON;
         while (!(RCC->REG_LSE & BIT_LSERDY)) {}
@@ -89,7 +80,7 @@ void stmclk_enable_lfclk(void)
 
 void stmclk_disable_lfclk(void)
 {
-    if (CLOCK_LSE) {
+    if (IS_ACTIVE(CONFIG_BOARD_HAS_LSE)) {
         stmclk_dbp_unlock();
         RCC->REG_LSE &= ~(BIT_LSEON);
         while (!(RCC->REG_LSE & BIT_LSERDY)) {}

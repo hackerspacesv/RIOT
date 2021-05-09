@@ -19,7 +19,6 @@
  * @}
  */
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -29,7 +28,7 @@
 #include "bitarithm.h"
 #include "bitfield.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifdef MODULE_PERIPH_GPIO_IRQ

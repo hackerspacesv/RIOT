@@ -19,6 +19,8 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "opt3001.h"
 #include "opt3001_regs.h"
 #include "periph/i2c.h"
@@ -27,7 +29,7 @@
 #include "byteorder.h"
 #include "math.h"
 
-#define ENABLE_DEBUG  (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define DEV_I2C     (dev->params.i2c_dev) /**< BUS */

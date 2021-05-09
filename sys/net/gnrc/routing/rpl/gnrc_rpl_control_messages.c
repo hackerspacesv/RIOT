@@ -16,6 +16,7 @@
  * @author Cenk Gündoğan <cenk.guendogan@haw-hamburg.de>
  */
 
+#include <assert.h>
 #include <string.h>
 #include "kernel_defines.h"
 
@@ -42,7 +43,7 @@
 #include "net/gnrc/rpl/p2p.h"
 #endif
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static char addr_str[IPV6_ADDR_MAX_STR_LEN];
@@ -112,12 +113,14 @@ static inline bool gnrc_rpl_validation_DAO(gnrc_rpl_dao_t *dao, uint16_t len)
 {
     uint16_t expected_len = sizeof(*dao) + sizeof(icmpv6_hdr_t);
 
-    if ((dao->k_d_flags & GNRC_RPL_DAO_D_BIT)) {
-        expected_len += sizeof(ipv6_addr_t);
-    }
-
     if (expected_len <= len) {
-        return true;
+        if ((dao->k_d_flags & GNRC_RPL_DAO_D_BIT)) {
+            expected_len += sizeof(ipv6_addr_t);
+        }
+
+        if (expected_len <= len) {
+            return true;
+        }
     }
 
     DEBUG("RPL: wrong DAO len: %d, expected: %d\n", len, expected_len);
@@ -146,12 +149,14 @@ static inline bool gnrc_rpl_validation_DAO_ACK(gnrc_rpl_dao_ack_t *dao_ack,
         return false;
     }
 
-    if ((dao_ack->d_reserved & GNRC_RPL_DAO_ACK_D_BIT)) {
-        expected_len += sizeof(ipv6_addr_t);
-    }
+    if (expected_len <= len) {
+        if ((dao_ack->d_reserved & GNRC_RPL_DAO_ACK_D_BIT)) {
+            expected_len += sizeof(ipv6_addr_t);
+        }
 
-    if (expected_len == len) {
-        return true;
+        if (expected_len == len) {
+            return true;
+        }
     }
 
     DEBUG("RPL: wrong DAO-ACK len: %d, expected: %d\n", len, expected_len);
@@ -224,7 +229,7 @@ void gnrc_rpl_send(gnrc_pktsnip_t *pkt, kernel_pid_t iface, ipv6_addr_t *src, ip
         return;
     }
     gnrc_netif_hdr_set_netif(hdr->data, netif);
-    LL_PREPEND(pkt, hdr);
+    pkt = gnrc_pkt_prepend(pkt, hdr);
 
     if (!gnrc_netapi_dispatch_send(GNRC_NETTYPE_IPV6, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("RPL: cannot send packet: no subscribers found.\n");

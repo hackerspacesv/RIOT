@@ -33,7 +33,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "kernel_types.h"
+#include "sched.h"
 #include "msg.h"
 #ifdef MODULE_GNRC_NETIF_BUS
 #include "msg_bus.h"
@@ -62,6 +62,7 @@
 #if IS_USED(MODULE_GNRC_NETIF_PKTQ)
 #include "net/gnrc/netif/pktq/type.h"
 #endif
+#include "net/l2util.h"
 #include "net/ndp.h"
 #include "net/netdev.h"
 #include "net/netopt.h"
@@ -566,9 +567,22 @@ int gnrc_netif_set_from_netdev(gnrc_netif_t *netif,
                                const gnrc_netapi_opt_t *opt);
 
 /**
+ * @brief Gets an interface by the netdev type (and index)
+ *
+ * @pre The netdev has been registered with @ref netdev_register
+ *
+ * @param[in]  type         driver type of the netdev, can be @ref NETDEV_ANY
+ * @param[in]  index        index of the netdev, can be @ref NETDEV_INDEX_ANY
+ *
+ * @return  The network interface that has a netdev of matching type and index
+ *          NULL if no matching interface could be found
+ */
+gnrc_netif_t *gnrc_netif_get_by_type(netdev_type_t type, uint8_t index);
+
+/**
  * @brief   Converts a hardware address to a human readable string.
  *
- * @note    Compatibility wrapper for @see netif_addr_to_str
+ * @note    Compatibility wrapper for @see l2util_addr_to_str
  *
  * @details The format will be like `xx:xx:xx:xx` where `xx` are the bytes
  *          of @p addr in hexadecimal representation.
@@ -585,14 +599,14 @@ int gnrc_netif_set_from_netdev(gnrc_netif_t *netif,
  */
 static inline char *gnrc_netif_addr_to_str(const uint8_t *addr, size_t addr_len, char *out)
 {
-    return netif_addr_to_str(addr, addr_len, out);
+    return l2util_addr_to_str(addr, addr_len, out);
 }
 
 /**
  * @brief   Parses a string of colon-separated hexadecimals to a hardware
  *          address.
  *
- * @note    Compatibility wrapper for @see netif_addr_from_str
+ * @note    Compatibility wrapper for @see l2util_addr_from_str
  *
  * @details The input format must be like `xx:xx:xx:xx` where `xx` will be the
  *          bytes of @p addr in hexadecimal representation.
@@ -610,7 +624,7 @@ static inline char *gnrc_netif_addr_to_str(const uint8_t *addr, size_t addr_len,
  */
 static inline size_t gnrc_netif_addr_from_str(const char *str, uint8_t *out)
 {
-    return netif_addr_from_str(str, out);
+    return l2util_addr_from_str(str, out);
 }
 
 /**

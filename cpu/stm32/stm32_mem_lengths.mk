@@ -1,7 +1,3 @@
-# Set the common memory addresses for stm32 MCU family
-ROM_START_ADDR ?= 0x08000000
-RAM_START_ADDR ?= 0x20000000
-
 # The next block takes care of setting the rigth lengths of RAM and ROM
 # for the stm32 family. Most of the CPUs should have been taken into
 # account here, so no need to assign the lengths per model.
@@ -263,6 +259,10 @@ else ifeq ($(STM32_TYPE), L)
     else ifeq ($(STM32_MODEL2), R)
       RAM_LEN = 640K
     endif
+  else ifeq ($(STM32_FAMILY), 5)
+    ifneq (, $(filter $(STM32_MODEL2), 5 6))
+      RAM_LEN = 256K
+    endif
   endif
 else ifeq ($(STM32_TYPE), W)
   ifeq ($(STM32_FAMILY), B)
@@ -272,6 +272,13 @@ else ifeq ($(STM32_TYPE), W)
       else ifneq (, $(filter $(STM32_ROMSIZE), E G))
         RAM_LEN = 256K
       endif
+    endif
+  endif
+else ifeq ($(STM32_TYPE), MP)
+  ifeq ($(STM32_FAMILY), 1)
+    ifeq ($(STM32_MODEL), 157)
+      RAM_START_ADDR = 0x10000000
+      RAM_LEN = 384K
     endif
   endif
 endif
@@ -304,6 +311,26 @@ else ifeq ($(STM32_ROMSIZE), H)
   ROM_LEN = 1536K
 else ifeq ($(STM32_ROMSIZE), I)
   ROM_LEN = 2048K
+else ifeq ($(STM32_TYPE), MP)
+  ifeq ($(STM32_FAMILY), 1)
+    # STM32MP1 family has no flash ROM memory.
+    # Thus a part of SRAM must be considered as ROM.
+    # RETRAM (0x0 address) is setup as ROM by default.
+    # However in RIOT, vector table is relocated using VTOR register.
+    # Considering the minimum alignment is 128 words and knowing the number of
+    # interrupt vectors for a given MCU, if a device has for example 150 interrupt
+    # channels:
+    # Vector table has a size of 150 * 4 = 600 = 0x258
+    # As the table should be 128 word aligned, vector table size reserved is 0x400.
+    ifeq ($(STM32_MODEL), 157)
+      ROM_START_ADDR ?= 0x0
+      ifneq (,$(filter stm32mp1_eng_mode,$(USEMODULE)))
+        ROM_OFFSET ?= 0x400
+      endif
+      ROM_LEN ?= 64K
+    endif
+  endif
+else
 endif
 
 ifeq ($(STM32_PINCOUNT), A)
@@ -344,4 +371,10 @@ else ifeq ($(STM32_PINCOUNT), V)
   STM32_PIN = 100
 else ifeq ($(STM32_PINCOUNT), Z)
   STM32_PIN = 144
+else ifeq ($(STM32_PINCOUNT), AC)
+  STM32_PIN = 361
 endif
+
+# Set the common memory addresses for stm32 MCU family
+ROM_START_ADDR ?= 0x08000000
+RAM_START_ADDR ?= 0x20000000

@@ -30,7 +30,7 @@
 #include "bmx280_internals.h"
 #include "xtimer.h"
 
-#define ENABLE_DEBUG        (0)
+#define ENABLE_DEBUG        0
 #include "debug.h"
 
 #ifdef BMX280_USE_SPI
@@ -255,6 +255,7 @@ int bmx280_init(bmx280_t *dev, const bmx280_params_t *params)
     /* test the connection to the device by reading and verifying its chip ID */
     if (_read_reg(dev, BMX280_CHIP_ID_REG, &reg) != BMX280_OK) {
         DEBUG("[bmx280] error: unable to read chip ID from device\n");
+        _release(dev);
         return BMX280_ERR_NODEV;
     }
     if (reg != BMX280_CHIP_ID_VAL) {

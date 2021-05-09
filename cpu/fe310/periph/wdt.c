@@ -29,7 +29,7 @@
 
 #include "vendor/aon.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 void wdt_start(void)
@@ -59,6 +59,7 @@ void wdt_kick(void)
 static inline uint8_t _scale(uint32_t count)
 {
     uint8_t scale = 0;
+
     while (count > (UINT16_MAX - 1)) {
         count >>= 1;
         scale++;

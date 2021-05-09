@@ -68,6 +68,7 @@ typedef enum {
      * Ethernet      | 6      | device MAC address
      * nrfmin        | 2      | device short address
      * CC110x        | 1      | device address
+     * NRF24L01+     | 5      | device address
      * LoRaWAN       | 4      | device address
      */
     NETOPT_ADDRESS,
@@ -248,37 +249,43 @@ typedef enum {
      */
     NETOPT_RAWMODE,
     /**
-     * @brief   (@ref netopt_enable_t) trigger interrupt at reception start
+     * @brief   (@ref netopt_enable_t) Used to check if the driver generates NETDEV_EVENT_RX_STARTED
+     *          events
      *
      * It is mostly triggered after the preamble is correctly received
      *
-     * @note not all transceivers may support this interrupt
+     * @warning This value is read-only and cannot be configured at run-time
      */
     NETOPT_RX_START_IRQ,
 
     /**
-     * @brief   (@ref netopt_enable_t) trigger interrupt after frame reception
+     * @brief   (@ref netopt_enable_t) Used to check if the driver generates
+     *          NETDEV_EVENT_RX_COMPLETE events
      *
      * This interrupt is triggered after a complete frame is received.
      *
-     * @note in case a transceiver does not support this interrupt, the event
-     *       may be triggered by the driver
+     * @note    In case a transceiver does not support this interrupt, the event
+     *          may be triggered by the driver
+     * @warning This value is read-only and cannot be configured at run-time
      */
     NETOPT_RX_END_IRQ,
 
     /**
-     * @brief   (@ref netopt_enable_t) trigger interrupt at transmission start
+     * @brief   (@ref netopt_enable_t) Used to check if the driver generates NETDEV_EVENT_TX_STARTED
+     *          events
      *
      * This interrupt is triggered when the transceiver starts to send out the
      * frame.
      *
-     * @note in case a transceiver does not support this interrupt, the event
-     *       may be triggered by the driver
+     * @note    In case a transceiver does not support this interrupt, the event
+     *          may be triggered by the driver
+     * @warning This value is read-only and cannot be configured at run-time
      */
     NETOPT_TX_START_IRQ,
 
     /**
-     * @brief   (@ref netopt_enable_t) trigger interrupt after frame transmission
+     * @brief   (@ref netopt_enable_t) Used to check if the driver generates
+     *          NETDEV_EVENT_TX_COMPLETE events
      *
      * This interrupt is triggered when the full frame has been transmitted.
      *
@@ -690,6 +697,26 @@ typedef enum {
     NETOPT_MR_OFDM_MCS,
 
     /**
+     * @brief   (uint8_t) MR-FSK PHY Modulation Index (x 64)
+     */
+    NETOPT_MR_FSK_MODULATION_INDEX,
+
+    /**
+     * @brief   (uint8_t) MR-FSK Modulation Order
+     */
+    NETOPT_MR_FSK_MODULATION_ORDER,
+
+    /**
+     * @brief   (uint8_t) MR-FSK PHY Symbol Rate (kHz)
+     */
+    NETOPT_MR_FSK_SRATE,
+
+    /**
+     * @brief   (uint8_t) MR-FSK PHY Forward Error Correction
+     */
+    NETOPT_MR_FSK_FEC,
+
+    /**
      * @brief   (uint8_t) PHY Channel Spacing (kHz)
      */
     NETOPT_CHANNEL_SPACING,
@@ -747,6 +774,31 @@ typedef enum {
      */
     NETOPT_RSSI,
 
+    /**
+     * @brief (uint16_t) Set the battery monitor voltage (in mV).
+     *
+     * When set, a @ref SYS_BUS_POWER_EVENT_LOW_VOLTAGE event is generated
+     * on the SYS_BUS_POWER bus if the supply voltage falls below the set value.
+     *
+     * Set to 0 to disable battery monitoring.
+     */
+    NETOPT_BATMON,
+
+    /**
+     * @brief   (array of byte array) get link layer multicast groups as array
+     *          of byte arrays (length of each byte array corresponds to the
+     *          length of @ref NETOPT_ADDRESS) or join a link layer multicast
+     *          group as byte array on an interface
+     *
+     * When getting the option you can pass an array of byte arrays of any
+     * length greater than 0 to the getter. The array will be filled up to to
+     * its maximum and the remaining addresses on the interface will be ignored
+     */
+    NETOPT_L2_GROUP,
+    /**
+     * @brief   (array of byte arrays) Leave an link layer multicast group
+     */
+    NETOPT_L2_GROUP_LEAVE,
     /**
      * @brief   maximum number of options defined here.
      *

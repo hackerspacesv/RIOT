@@ -26,11 +26,12 @@ ifneq (,$(filter mtd_native,$(USEMODULE)))
   DIRS += mtd
 endif
 
-ifneq (,$(filter can_linux,$(USEMODULE)))
-  DIRS += can
-endif
 ifneq (,$(filter backtrace,$(USEMODULE)))
   DIRS += backtrace
+endif
+
+ifneq (,$(filter native_cli_eui_provider,$(USEMODULE)))
+  DIRS += cli_eui_provider
 endif
 
 include $(RIOTBASE)/Makefile.base

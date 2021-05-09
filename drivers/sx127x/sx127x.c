@@ -19,6 +19,8 @@
  * @author      Alexandre Abadie <alexandre.abadie@inria.fr>
  * @}
  */
+
+#include <assert.h>
 #include <stdbool.h>
 #include <math.h>
 #include <string.h>
@@ -39,7 +41,7 @@
 #include "sx127x_registers.h"
 #include "sx127x_netdev.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* The reset signal must be applied for at least 100 µs to trigger the manual
@@ -71,11 +73,12 @@ static void sx127x_on_dio1_isr(void *arg);
 static void sx127x_on_dio2_isr(void *arg);
 static void sx127x_on_dio3_isr(void *arg);
 
-void sx127x_setup(sx127x_t *dev, const sx127x_params_t *params)
+void sx127x_setup(sx127x_t *dev, const sx127x_params_t *params, uint8_t index)
 {
     netdev_t *netdev = (netdev_t*) dev;
     netdev->driver = &sx127x_driver;
     dev->params = *params;
+    netdev_register(&dev->netdev, NETDEV_SX127X, index);
 }
 
 int sx127x_reset(const sx127x_t *dev)

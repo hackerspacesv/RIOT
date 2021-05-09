@@ -12,9 +12,12 @@ ifneq ($(DISABLE_LIBSTDCPP),1)
 endif
 FEATURES_PROVIDED += periph_cpuid
 FEATURES_PROVIDED += periph_eeprom
+FEATURES_PROVIDED += periph_flashpage
+FEATURES_PROVIDED += periph_flashpage_pagewise
 FEATURES_PROVIDED += periph_hwrng
 FEATURES_PROVIDED += periph_pm
 FEATURES_PROVIDED += periph_pwm
+FEATURES_PROVIDED += periph_timer_periodic
 FEATURES_PROVIDED += ssp
 
 ifeq ($(OS),Linux)
@@ -24,4 +27,10 @@ ifeq ($(OS),Linux)
   FEATURES_PROVIDED += periph_gpio periph_gpio_irq
   # CAN is only supported on Linux through socketCAN
   FEATURES_PROVIDED += periph_can
+endif
+
+# This configuration enables modules that are only available when using Kconfig
+# module modelling
+ifeq (1, $(TEST_KCONFIG))
+  KCONFIG_ADD_CONFIG += $(RIOTCPU)/native/native.config
 endif

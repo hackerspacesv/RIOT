@@ -15,6 +15,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -24,20 +25,12 @@
 #include "irq.h"
 #include "log.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
-
-#if ENABLE_DEBUG
 
 #define DEBUG_DEV(f, d, ...) \
         DEBUG("[apds99xx] %s i2c dev=%d addr=%02x: " f "\n", \
               __func__, d->params.dev, APDS99XX_I2C_ADDRESS, ## __VA_ARGS__);
-
-#else /* ENABLE_DEBUG */
-
-#define DEBUG_DEV(f, d, ...)
-
-#endif /* ENABLE_DEBUG */
 
 #define ERROR_DEV(f, d, ...) \
         LOG_ERROR("[apds99xx] %s i2c dev=%d addr=%02x: " f "\n", \
@@ -487,7 +480,7 @@ static int _reg_read(const apds99xx_t *dev, uint8_t reg, uint8_t *data, uint16_t
         return -APDS99XX_ERROR_I2C;
     }
 
-    if (ENABLE_DEBUG) {
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
         printf("[apds99xx] %s i2c dev=%d addr=%02x: read from reg 0x%02x: ",
                __func__, dev->params.dev, APDS99XX_I2C_ADDRESS, reg);
         for (uint16_t i = 0; i < len; i++) {
@@ -503,7 +496,7 @@ static int _reg_write(const apds99xx_t *dev, uint8_t reg, uint8_t *data, uint16_
 {
     assert(dev != NULL);
 
-    if (ENABLE_DEBUG) {
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
         printf("[apds99xx] %s i2c dev=%d addr=%02x: write to reg 0x%02x: ",
                __func__, dev->params.dev, APDS99XX_I2C_ADDRESS, reg);
         for (uint16_t i = 0; i < len; i++) {

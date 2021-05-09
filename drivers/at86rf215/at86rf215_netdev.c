@@ -30,6 +30,8 @@
 #include "net/netdev/ieee802154.h"
 #include "net/gnrc/netif/internal.h"
 
+#include "sys/bus.h"
+
 #include "at86rf215.h"
 #include "at86rf215_netdev.h"
 #include "at86rf215_internal.h"
@@ -65,6 +67,20 @@ static bool _is_busy(at86rf215_t *dev)
     }
 
     return false;
+}
+
+static uint8_t _get_best_match(const uint8_t *array, uint8_t len, uint8_t val)
+{
+    uint8_t res = 0;
+    uint8_t best = 0xFF;
+    for (uint8_t i = 0; i < len; ++i) {
+        if (abs((int)array[i] - val) < best) {
+            best = abs((int)array[i] - val);
+            res = i;
+        }
+    }
+
+    return res;
 }
 
 /* executed in the GPIO ISR context */
@@ -271,23 +287,10 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             return sizeof(netopt_enable_t);
 
         case NETOPT_RX_START_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF215_OPT_TELL_RX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_RX_END_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF215_OPT_TELL_RX_END);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_START_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF215_OPT_TELL_TX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_END_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF215_OPT_TELL_TX_END);
+            *((netopt_enable_t *)val) = NETOPT_ENABLE;
             return sizeof(netopt_enable_t);
 
         case NETOPT_CSMA:
@@ -393,7 +396,40 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             *((int8_t *)val) = at86rf215_get_phy_mode(dev);
             res = max_len;
             break;
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+        case NETOPT_MR_FSK_MODULATION_INDEX:
+            assert(max_len >= sizeof(int8_t));
+            *((int8_t *)val) = at86rf215_FSK_get_mod_idx(dev);
+            res = max_len;
+            break;
 
+        case NETOPT_MR_FSK_MODULATION_ORDER:
+            assert(max_len >= sizeof(int8_t));
+            /* 0 -> 2-FSK, 1 -> 4-FSK */
+            *((int8_t *)val) = 2 + 2 * at86rf215_FSK_get_mod_order(dev);
+            res = max_len;
+            break;
+
+        case NETOPT_MR_FSK_SRATE:
+            assert(max_len >= sizeof(uint16_t));
+            /* netopt expects symbol rate in kHz, internally it's stored in 10kHz steps */
+            *((uint16_t *)val) = _at86rf215_fsk_srate_10kHz[at86rf215_FSK_get_srate(dev)]
+                               * 10;
+            res = max_len;
+            break;
+
+        case NETOPT_MR_FSK_FEC:
+            assert(max_len >= sizeof(uint8_t));
+            *((uint8_t *)val) = at86rf215_FSK_get_fec(dev);
+            res = max_len;
+            break;
+
+        case NETOPT_CHANNEL_SPACING:
+            assert(max_len >= sizeof(uint16_t));
+            *((uint16_t *)val) = at86rf215_get_channel_spacing(dev);
+            res = max_len;
+            break;
+#endif /* MODULE_NETDEV_IEEE802154_MR_FSK */
 #ifdef MODULE_NETDEV_IEEE802154_MR_OFDM
         case NETOPT_MR_OFDM_OPTION:
             assert(max_len >= sizeof(int8_t));
@@ -504,6 +540,22 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             res = sizeof(netopt_enable_t);
             break;
 
+#ifdef MODULE_AT86RF215_BATMON
+        case NETOPT_BATMON:
+            assert(len <= sizeof(uint16_t));
+            {
+                uint16_t mV = *(const uint16_t *)val;
+                if (mV) {
+                    res = at86rf215_enable_batmon(dev, mV);
+                    res = (res == 0) ? (int)sizeof(uint16_t) : res;
+                } else {
+                    at86rf215_disable_batmon(dev);
+                    res = sizeof(uint16_t);
+                }
+            }
+            break;
+#endif
+
         case NETOPT_RETRANS:
             assert(len <= sizeof(uint8_t));
             dev->retries_max =  *((const uint8_t *)val);
@@ -518,30 +570,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 
         case NETOPT_PROMISCUOUSMODE:
             at86rf215_set_option(dev, AT86RF215_OPT_PROMISCUOUS,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_RX_START_IRQ:
-            at86rf215_set_option(dev, AT86RF215_OPT_TELL_RX_START,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_RX_END_IRQ:
-            at86rf215_set_option(dev, AT86RF215_OPT_TELL_RX_END,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_START_IRQ:
-            at86rf215_set_option(dev, AT86RF215_OPT_TELL_TX_START,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_END_IRQ:
-            at86rf215_set_option(dev, AT86RF215_OPT_TELL_TX_END,
                                  ((const bool *)val)[0]);
             res = sizeof(netopt_enable_t);
             break;
@@ -601,11 +629,93 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
                 res = sizeof(uint8_t);
                 break;
 #endif /* MODULE_NETDEV_IEEE802154_MR_OFDM */
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+            case IEEE802154_PHY_MR_FSK:
+                at86rf215_configure_FSK(dev,
+                                        at86rf215_FSK_get_srate(dev),
+                                        at86rf215_FSK_get_mod_idx(dev),
+                                        at86rf215_FSK_get_mod_order(dev),
+                                        at86rf215_FSK_get_fec(dev));
+                res = sizeof(uint8_t);
+                break;
+#endif /* MODULE_NETDEV_IEEE802154_MR_FSK */
             default:
                 return -ENOTSUP;
             }
             break;
 
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+        case NETOPT_MR_FSK_MODULATION_INDEX:
+            if (at86rf215_get_phy_mode(dev) != IEEE802154_PHY_MR_FSK) {
+                return -ENOTSUP;
+            }
+
+            if (at86rf215_FSK_set_mod_idx(dev, *(uint8_t *)val) == 0) {
+                res = at86rf215_FSK_get_mod_idx(dev);
+            } else {
+                res = -ERANGE;
+            }
+            break;
+
+        case NETOPT_MR_FSK_MODULATION_ORDER:
+            if (at86rf215_get_phy_mode(dev) != IEEE802154_PHY_MR_FSK) {
+                return -ENOTSUP;
+            }
+
+            if (*(uint8_t *)val != 2 && *(uint8_t *)val != 4) {
+                res = -ERANGE;
+            } else {
+                /* 4-FSK -> 1, 2-FSK -> 0 */
+                at86rf215_FSK_set_mod_order(dev, *(uint8_t *)val >> 2);
+                res = sizeof(uint8_t);
+            }
+            break;
+
+        case NETOPT_MR_FSK_SRATE:
+            if (at86rf215_get_phy_mode(dev) != IEEE802154_PHY_MR_FSK) {
+                return -ENOTSUP;
+            }
+
+            /* find the closest symbol rate value (in 10 kHz) that matches
+               the requested input (in kHz) */
+            res = _get_best_match(_at86rf215_fsk_srate_10kHz,
+                                  FSK_SRATE_400K + 1, *(uint16_t *)val / 10);
+            if (at86rf215_FSK_set_srate(dev, res) == 0) {
+                res = 10 * _at86rf215_fsk_srate_10kHz[res];
+            } else {
+                res = -ERANGE;
+            }
+            break;
+
+        case NETOPT_MR_FSK_FEC:
+            if (at86rf215_get_phy_mode(dev) != IEEE802154_PHY_MR_FSK) {
+                return -ENOTSUP;
+            }
+
+            if (at86rf215_FSK_set_fec(dev, *(uint8_t *)val) == 0) {
+                res = sizeof(uint8_t);
+            } else {
+                res = -ERANGE;
+            }
+
+            break;
+
+        case NETOPT_CHANNEL_SPACING:
+            if (at86rf215_get_phy_mode(dev) != IEEE802154_PHY_MR_FSK) {
+                return -ENOTSUP;
+            }
+
+            /* find the closest channel spacing value (in 25 kHz) that matches
+               the requested input (in kHz) */
+            res = _get_best_match(_at86rf215_fsk_channel_spacing_25kHz,
+                                  FSK_CHANNEL_SPACING_400K + 1, *(uint16_t *)val / 25);
+            if (at86rf215_FSK_set_channel_spacing(dev, res) == 0) {
+                res = 25 * _at86rf215_fsk_channel_spacing_25kHz[res];
+            } else {
+                res = -ERANGE;
+            }
+            break;
+#endif /* MODULE_NETDEV_IEEE802154_MR_FSK */
 #ifdef MODULE_NETDEV_IEEE802154_MR_OFDM
         case NETOPT_MR_OFDM_OPTION:
             if (at86rf215_get_phy_mode(dev) != IEEE802154_PHY_MR_OFDM) {
@@ -722,7 +832,7 @@ static void _tx_end(at86rf215_t *dev, netdev_event_t event)
 
     at86rf215_tx_done(dev);
 
-    if (dev->flags & AT86RF215_OPT_TELL_TX_END) {
+    if (netdev->event_callback) {
         netdev->event_callback(netdev, event);
     }
 
@@ -881,9 +991,7 @@ static void _isr(netdev_t *netdev)
     uint8_t bb_irqs_enabled = BB_IRQ_RXFE | BB_IRQ_TXFE;
 
     /* not using IRQMM because we want to know about AGCH */
-    if (dev->flags & AT86RF215_OPT_TELL_RX_START) {
-        bb_irqs_enabled |= BB_IRQ_RXAM;
-    }
+    bb_irqs_enabled |= BB_IRQ_RXAM;
 
     rf_irq_mask = at86rf215_reg_read(dev, dev->RF->RG_IRQS);
     bb_irq_mask = at86rf215_reg_read(dev, dev->BBC->RG_IRQS);
@@ -923,6 +1031,14 @@ static void _isr(netdev_t *netdev)
         }
     }
 
+    /* Handle Low Battery IRQ */
+#if MODULE_AT86RF215_BATMON
+    if ((rf_irq_mask & RF_IRQ_BATLOW)) {
+        msg_bus_t *bus = sys_bus_get(SYS_BUS_POWER);
+        msg_bus_post(bus, SYS_BUS_POWER_EVENT_LOW_VOLTAGE, NULL);
+    }
+#endif
+
     /* exit early if the interrupt was not for this interface */
     if (!((bb_irq_mask & bb_irqs_enabled) ||
           (rf_irq_mask & (RF_IRQ_EDC | RF_IRQ_TRXRDY)) || timeout)) {
@@ -936,6 +1052,13 @@ static void _isr(netdev_t *netdev)
     } else {
         rx_ack_req = 0;
     }
+
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+    /* listen for short preamble in RX */
+    if (bb_irq_mask & BB_IRQ_TXFE && dev->fsk_pl) {
+        at86rf215_FSK_prepare_rx(dev);
+    }
+#endif /* MODULE_NETDEV_IEEE802154_MR_FSK */
 
     if (dev->flags & AT86RF215_OPT_CCA_PENDING) {
 
@@ -957,6 +1080,13 @@ static void _isr(netdev_t *netdev)
         /* start transmitting the frame */
         if (rf_irq_mask & RF_IRQ_TRXRDY) {
 
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+            /* send long preamble in TX */
+            if (dev->fsk_pl) {
+                at86rf215_FSK_prepare_tx(dev);
+            }
+#endif /* MODULE_NETDEV_IEEE802154_MR_FSK */
+
             /* automatically switch to RX when TX is done */
             _enable_tx2rx(dev);
 
@@ -971,8 +1101,7 @@ static void _isr(netdev_t *netdev)
             at86rf215_rf_cmd(dev, CMD_RF_TX);
 
             /* This also tells the upper layer about retransmissions - should it be like that? */
-            if (netdev->event_callback &&
-                (dev->flags & AT86RF215_OPT_TELL_TX_START)) {
+            if (netdev->event_callback) {
                 netdev->event_callback(netdev, NETDEV_EVENT_TX_STARTED);
             }
         }
@@ -1008,8 +1137,7 @@ static void _isr(netdev_t *netdev)
             break;
         }
 
-        if ((bb_irq_mask & BB_IRQ_RXAM) &&
-            (dev->flags & AT86RF215_OPT_TELL_RX_END)) {
+        if ((bb_irq_mask & BB_IRQ_RXAM) && netdev->event_callback) {
             /* will be executed in the same thread */
             netdev->event_callback(netdev, NETDEV_EVENT_RX_STARTED);
         }
@@ -1022,7 +1150,7 @@ static void _isr(netdev_t *netdev)
 
         bb_irq_mask &= ~BB_IRQ_RXFE;
 
-        if (dev->flags & AT86RF215_OPT_TELL_RX_END) {
+        if (netdev->event_callback) {
             /* will be executed in the same thread */
             netdev->event_callback(netdev, NETDEV_EVENT_RX_COMPLETE);
         }

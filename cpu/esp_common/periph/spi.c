@@ -19,12 +19,11 @@
  * @}
  */
 
-#define ENABLE_DEBUG (0)
-#include "debug.h"
+#include <assert.h>
+#include <string.h>
+
 #include "esp_common.h"
 #include "log.h"
-
-#include <string.h>
 
 #include "cpu.h"
 #include "mutex.h"
@@ -32,6 +31,9 @@
 
 #include "esp_attr.h"
 #include "gpio_arch.h"
+
+#define ENABLE_DEBUG 0
+#include "debug.h"
 
 #ifdef MCU_ESP32
 
@@ -486,15 +488,15 @@ void IRAM_ATTR spi_transfer_bytes(spi_t bus, spi_cs_t cs, bool cont,
         return;
     }
 
-    #if ENABLE_DEBUG
-    if (out) {
-        DEBUG("out = ");
-        for (size_t i = 0; i < len; i++) {
-            DEBUG("%02x ", ((const uint8_t *)out)[i]);
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        if (out) {
+            DEBUG("out = ");
+            for (size_t i = 0; i < len; i++) {
+                DEBUG("%02x ", ((const uint8_t *)out)[i]);
+            }
+            DEBUG("\n");
         }
-        DEBUG("\n");
     }
-    #endif
 
     if (cs != SPI_CS_UNDEF) {
         gpio_clear(cs);
@@ -522,13 +524,13 @@ void IRAM_ATTR spi_transfer_bytes(spi_t bus, spi_cs_t cs, bool cont,
         gpio_set (cs);
     }
 
-    #if ENABLE_DEBUG
-    if (in) {
-        DEBUG("in = ");
-        for (size_t i = 0; i < len; i++) {
-            DEBUG("%02x ", ((const uint8_t *)in)[i]);
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        if (in) {
+            DEBUG("in = ");
+            for (size_t i = 0; i < len; i++) {
+                DEBUG("%02x ", ((const uint8_t *)in)[i]);
+            }
+            DEBUG("\n");
         }
-        DEBUG("\n");
     }
-    #endif
 }

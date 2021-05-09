@@ -18,12 +18,14 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "atwinc15x0_internal.h"
 #include "mutex.h"
 #include "periph/spi.h"
 #include "xtimer.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 void atwinc15x0_isr(void *arg)
@@ -76,7 +78,7 @@ void nm_bsp_reset(void)
 
 void nm_bsp_sleep(uint32 u32TimeMsec)
 {
-    xtimer_usleep(u32TimeMsec * US_PER_MS);
+    xtimer_msleep(u32TimeMsec);
 }
 
 void nm_bsp_register_isr(tpfNmBspIsr pfIsr)

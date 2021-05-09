@@ -19,12 +19,13 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdint.h>
 
 #include "cpu.h"
 #include "periph/rtt.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define SMWDTHROSC_STLOAD_STLOAD_MASK  (0x00000001)

@@ -2,7 +2,7 @@ MODULE = periph
 
 # Select the specific implementation for `periph_i2c`
 ifneq (,$(filter periph_i2c,$(USEMODULE)))
-  ifneq (,$(filter $(CPU_FAM),f0 f3 f7 g0 g4 l0 l4 wb))
+  ifneq (,$(filter $(CPU_FAM),f0 f3 f7 g0 g4 l0 l4 l5 wb))
     SRC += i2c_1.c
   else # f1/f2/f4/l1
     SRC += i2c_2.c
@@ -11,7 +11,11 @@ endif
 
 # Select the specific implementation for `periph_adc`
 ifneq (,$(filter periph_adc,$(USEMODULE)))
-  SRC += adc_$(CPU_FAM).c
+  ifneq (,$(filter $(CPU_FAM),f4 f7))
+    SRC += adc_f4_f7.c
+  else
+    SRC += adc_$(CPU_FAM).c
+  endif
 endif
 
 # Select the correct implementation for `periph_gpio`

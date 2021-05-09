@@ -23,6 +23,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 
@@ -35,7 +36,7 @@
 #include "can/router.h"
 #include "utlist.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static candev_dev_t *candev_list[CAN_DLL_NUMOF];

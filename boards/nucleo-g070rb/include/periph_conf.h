@@ -23,10 +23,10 @@
 
 /* Add specific clock configuration (HSE, LSE) for this board here */
 #ifndef CONFIG_BOARD_HAS_LSE
-#define CONFIG_BOARD_HAS_LSE            (1)
+#define CONFIG_BOARD_HAS_LSE            1
 #endif
 
-#include "g0/cfg_clock_default.h"
+#include "clk_conf.h"
 #include "cfg_i2c1_pb8_pb9.h"
 #include "cfg_rtt_default.h"
 

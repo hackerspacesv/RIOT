@@ -24,7 +24,7 @@
 #include "fmt.h"
 #include "rn2xx3_internal.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define RESP_TIMEOUT_SEC            (5U)
@@ -100,7 +100,7 @@ void rn2xx3_set_internal_state(rn2xx3_t *dev, uint8_t state)
         return;
     }
 
-    if (ENABLE_DEBUG) {
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
         printf("[rn2xx3] new state: ");
         switch(state) {
             case RN2XX3_INT_STATE_CMD:

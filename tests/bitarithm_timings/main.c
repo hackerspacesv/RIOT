@@ -29,9 +29,11 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdatomic.h>
 #include <stdio.h>
+#include <limits.h>
 
 #include "bitarithm.h"
 #include "xtimer.h"

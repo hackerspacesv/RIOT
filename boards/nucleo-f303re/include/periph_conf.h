@@ -32,7 +32,7 @@
 #endif
 
 #include "periph_cpu.h"
-#include "f1f3/cfg_clock_default.h"
+#include "clk_conf.h"
 #include "cfg_timer_tim2.h"
 
 #ifdef __cplusplus
@@ -195,8 +195,8 @@ static const i2c_conf_t i2c_config[] = {
         .dev            = I2C3,
         .speed          = I2C_SPEED_NORMAL,
         .scl_pin        = GPIO_PIN(PORT_A, 8),
-        .sda_pin        = GPIO_PIN(PORT_A, 5),
-        .scl_af         = GPIO_AF5,
+        .sda_pin        = GPIO_PIN(PORT_B, 5),
+        .scl_af         = GPIO_AF3,
         .sda_af         = GPIO_AF8,
         .bus            = APB1,
         .rcc_mask       = RCC_APB1ENR_I2C3EN,

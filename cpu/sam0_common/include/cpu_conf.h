@@ -29,7 +29,13 @@
 #undef LITTLE_ENDIAN
 #endif
 
-#if defined(CPU_SAMD21A)
+#if defined(CPU_SAMD10)
+#include "vendor/samd10/include/samd10.h"
+#elif defined(CPU_SAMD20)
+#include "vendor/samd20/include/samd20.h"
+#elif defined(CPU_SAMD20B)
+#include "vendor/samd20/include_b/samd20.h"
+#elif defined(CPU_SAMD21A)
 #include "vendor/samd21/include_a/samd21.h"
 #elif defined(CPU_SAMD21B)
 #include "vendor/samd21/include_b/samd21.h"
@@ -111,9 +117,9 @@ as shown in the NVM Row Organization figure. */
 /* The minimum block size which can be written is 16B. However, the erase
  * block is always FLASHPAGE_SIZE (SAM0 row).
  */
-#define FLASHPAGE_RAW_BLOCKSIZE    (16)
+#define FLASHPAGE_WRITE_BLOCK_SIZE      (16)
 /* Writing should be always 4 byte aligned */
-#define FLASHPAGE_RAW_ALIGNMENT    (4)
+#define FLASHPAGE_WRITE_BLOCK_ALIGNMENT (4)
 /* Add RWWEE memory if supported by revision of the chip
  * On some chips it is called RWW EEPROM while on some DATAFLASH, try to
  * catch all without relying on the CPU model but on the named defines

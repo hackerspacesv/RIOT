@@ -10,7 +10,7 @@ else
 endif
 
 RESET ?= $(RIOTBOARD)/native/dist/reset.sh
-FLASHER = true
+FLASHER ?=
 FLASHFILE ?= $(ELFFILE)
 
 TERMPROG ?= $(FLASHFILE)
@@ -20,10 +20,18 @@ export CGANNOTATE ?= cg_annotate
 export GPROF ?= gprof
 
 # basic cflags:
-CFLAGS += -Wall -Wextra -pedantic $(CFLAGS_DBG)
+CFLAGS += -Wall -Wextra -pedantic $(CFLAGS_DBG) $(CFLAGS_OPT)
+CFLAGS += -U_FORTIFY_SOURCE
 CFLAGS_DBG ?= -g3
 
-# default std set to gnu99 of not overwritten by user
+ifneq (,$(filter backtrace,$(USEMODULE)))
+  $(warning module backtrace is used, do not omit frame pointers)
+  CFLAGS_OPT ?= -Og -fno-omit-frame-pointer
+else
+  CFLAGS_OPT ?= -Og
+endif
+
+# default std set to gnu11 if not overwritten by user
 ifeq (,$(filter -std=%, $(CFLAGS)))
   CFLAGS += -std=gnu11
 endif
@@ -59,6 +67,9 @@ else
   LINKFLAGS += -ldl
 endif
 
+# XFA (cross file array) support
+LINKFLAGS += -T$(RIOTBASE)/cpu/native/ldscripts/xfa.ld
+
 # clean up unused functions
 CFLAGS += -ffunction-sections -fdata-sections
 ifeq ($(OS),Darwin)
@@ -69,7 +80,7 @@ endif
 LINKFLAGS += -ffunction-sections
 
 # set the tap interface for term/valgrind
-ifneq (,$(filter netdev_default,$(USEMODULE)))
+ifneq (,$(filter netdev_tap,$(USEMODULE)))
   PORT ?= tap0
 endif
 
@@ -136,9 +147,6 @@ ifeq ($(CPU),native)
 endif
 
 all: # do not override first target
-
-all-debug: all
-	@$(COLOR_ECHO) '$(COLOR_RED)`all-debug` is deprecated, just use `all`$(COLOR_RESET)'
 
 all-gprof: all
 

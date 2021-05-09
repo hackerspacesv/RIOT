@@ -30,7 +30,7 @@
 #include "kernel_defines.h" /* needed for BUILD_BUG_ON */
 #include "time.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include <debug.h>
 
 static int fatfs_err_to_errno(int32_t err);
@@ -445,6 +445,7 @@ static const vfs_file_system_ops_t fatfs_fs_ops = {
     .unlink = _unlink,
     .mkdir = _mkdir,
     .rmdir = _rmdir,
+    .stat = vfs_sysop_stat_from_fstat,
 };
 
 static const vfs_file_ops_t fatfs_file_ops = {

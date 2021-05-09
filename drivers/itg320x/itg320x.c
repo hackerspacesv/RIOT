@@ -14,6 +14,7 @@
  * @{
  */
 
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -24,20 +25,12 @@
 #include "log.h"
 #include "xtimer.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
-
-#if ENABLE_DEBUG
 
 #define DEBUG_DEV(f, d, ...) \
         DEBUG("[itg320x] %s i2c dev=%d addr=%02x: " f "\n", \
               __func__, d->params.dev, d->params.addr, ## __VA_ARGS__);
-
-#else /* ENABLE_DEBUG */
-
-#define DEBUG_DEV(f, d, ...)
-
-#endif /* ENABLE_DEBUG */
 
 #define ERROR_DEV(f, d, ...) \
      do { \
@@ -103,11 +96,11 @@ int itg320x_init_int(const itg320x_t *dev, itg320x_drdy_int_cb_t cb, void *arg)
 
     if (dev->params.int_level == ITG320X_INT_HIGH) {
         /* for high active interrupt signal (default) */
-        gpio_init_int(dev->params.int_pin, GPIO_IN, GPIO_RISING, cb, 0);
+        gpio_init_int(dev->params.int_pin, GPIO_IN, GPIO_RISING, cb, arg);
     }
     else {
         /* for low active interrupt signal (default) */
-        gpio_init_int(dev->params.int_pin, GPIO_IN, GPIO_FALLING, cb, 0);
+        gpio_init_int(dev->params.int_pin, GPIO_IN, GPIO_FALLING, cb, arg);
     }
 
     /*
@@ -228,7 +221,7 @@ int itg320x_power_up(itg320x_t *dev)
     EXEC_RET(_update_reg(dev, ITG320X_REG_PWR_MGM, ITG320X_REG_PWR_MGM_SLEEP, 0));
 
     /* wait 20 ms after power-up */
-    xtimer_usleep(20 * US_PER_MS);
+    xtimer_msleep(20);
 
     return ITG320X_OK;
 }
@@ -245,7 +238,7 @@ static int _reset(itg320x_t *dev)
     EXEC_RET(_update_reg(dev, ITG320X_REG_PWR_MGM, ITG320X_REG_PWR_MGM_H_RESET, 1));
 
     /* wait 20 ms after reset */
-    xtimer_usleep(20 * US_PER_MS);
+    xtimer_msleep(20);
 
     return ITG320X_OK;
 }
@@ -321,14 +314,14 @@ static int _reg_read(const itg320x_t *dev, uint8_t reg, uint8_t *data, uint16_t 
         return ITG320X_ERROR_I2C;
     }
 
-#if ENABLE_DEBUG
-    printf("[itg320x] %s i2c dev=%d addr=%02x: read %d bytes from reg 0x%02x: ",
-           __func__, dev->params.dev, dev->params.addr, len, reg);
-    for (int i = 0; i < len; i++) {
-         printf("%02x ", data[i]);
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        printf("[itg320x] %s i2c dev=%d addr=%02x: read %d bytes from reg 0x%02x: ",
+            __func__, dev->params.dev, dev->params.addr, len, reg);
+        for (unsigned i = 0; i < len; i++) {
+            printf("%02x ", data[i]);
+        }
+        printf("\n");
     }
-    printf("\n");
-#endif
 
     return ITG320X_OK;
 }

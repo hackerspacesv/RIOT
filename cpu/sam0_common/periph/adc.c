@@ -25,7 +25,7 @@
 #include "periph_conf.h"
 #include "mutex.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* The SAMD5x/SAME5x family has two ADCs: ADC0 and ADC1.
@@ -69,7 +69,11 @@ static inline void _wait_syncbusy(void)
 #ifdef ADC_STATUS_SYNCBUSY
     while (ADC_DEV->STATUS.reg & ADC_STATUS_SYNCBUSY) {}
 #else
-    while (ADC_DEV->SYNCBUSY.reg) {}
+    /* Ignore the ADC SYNCBUSY.SWTRIG status
+     * The ADC SYNCBUSY.SWTRIG gets stuck to '1' after wake-up from Standby Sleep mode.
+     * SAMD5x/SAME5x errata: DS80000748 (page 10)
+     */
+    while (ADC_DEV->SYNCBUSY.reg & ~ADC_SYNCBUSY_SWTRIG) {}
 #endif
 }
 

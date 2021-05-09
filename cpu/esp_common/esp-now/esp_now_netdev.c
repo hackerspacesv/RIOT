@@ -21,7 +21,6 @@
 #include "tools.h"
 
 #include <string.h>
-#include <assert.h>
 #include <errno.h>
 
 #include "net/gnrc.h"
@@ -41,7 +40,7 @@
 #include "esp_now_params.h"
 #include "esp_now_netdev.h"
 
-#define ENABLE_DEBUG             (0)
+#define ENABLE_DEBUG             0
 #include "debug.h"
 
 #define ESP_NOW_UNICAST          (1)
@@ -66,7 +65,7 @@
 static esp_now_netdev_t _esp_now_dev = { 0 };
 static const netdev_driver_t _esp_now_driver;
 
-static bool _esp_now_add_peer(const uint8_t* bssid, uint8_t channel, uint8_t* key)
+static bool _esp_now_add_peer(const uint8_t* bssid, uint8_t channel, const uint8_t* key)
 {
     if (esp_now_is_peer_exist(bssid)) {
         return false;
@@ -155,12 +154,12 @@ static void IRAM_ATTR esp_now_scan_peers_done(void)
         critical_exit_var(state);
     }
 
-#if ENABLE_DEBUG
-    esp_now_peer_num_t peer_num;
-    esp_now_get_peer_num(&peer_num);
-    DEBUG("associated peers total=%d, encrypted=%d\n",
-          peer_num.total_num, peer_num.encrypt_num);
-#endif /* ENABLE_DEBUG */
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        esp_now_peer_num_t peer_num;
+        esp_now_get_peer_num(&peer_num);
+        DEBUG("associated peers total=%d, encrypted=%d\n",
+               peer_num.total_num, peer_num.encrypt_num);
+    }
 
     _esp_now_scan_peers_done = true;
 
@@ -450,6 +449,7 @@ esp_now_netdev_t *netdev_esp_now_setup(void)
     DEBUG("%s: multicast node add %s\n", __func__, res ? "success" : "error");
 #endif /* ESP_NOW_UNICAST */
 
+    netdev_register(&dev->netdev, NETDEV_ESP_NOW, 0);
     return dev;
 }
 

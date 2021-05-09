@@ -14,6 +14,7 @@
  * @author  Cenk Gündoğan <cenk.guendogan@haw-hamburg.de>
  */
 
+#include <assert.h>
 #include <string.h>
 
 #include "net/icmpv6.h"
@@ -26,10 +27,10 @@
 #include "net/gnrc/rpl/p2p_structs.h"
 #include "net/gnrc/rpl/p2p_dodag.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG                    0
 #include "debug.h"
 
-#if ENABLE_DEBUG
+#if IS_ACTIVE(ENABLE_DEBUG)
 static char addr_str[IPV6_ADDR_MAX_STR_LEN];
 #endif
 

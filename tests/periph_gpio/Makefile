@@ -12,6 +12,10 @@ USEMODULE += benchmark
 # disable native GPIOs for automatic test
 ifeq (native,$(BOARD))
   USEMODULE += periph_gpio_mock
+  # the same for Kconfig
+  ifeq (1,$(TEST_KCONFIG))
+    KCONFIG_ADD_CONFIG += $(APPDIR)/app.config.test.native
+  endif
 endif
 
 BOARDS_BENCH_PORT_1 = \
@@ -27,6 +31,9 @@ ifneq (,$(filter $(BOARD),$(BOARDS_BENCH_PORT_1)))
 else
   PORT_UNDER_TEST ?= 0
 endif
+
+# avoid running Kconfig by default
+SHOULD_RUN_KCONFIG ?=
 
 include $(RIOTBASE)/Makefile.include
 

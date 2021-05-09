@@ -42,11 +42,6 @@ config HAS_BACKUP_RAM
     help
         Indicates that Backup RAM is supported.
 
-config HAS_BOOTLOADER_ARDUINO
-    bool
-    help
-        Indicates that the Arduino bootloader is used.
-
 config HAS_CPP
     bool
     help
@@ -57,6 +52,12 @@ config HAS_CPU_CHECK_ADDRESS
     help
         Indicates that address validity check is supported.
 
+config HAS_DBGPIN
+    bool
+    help
+        Indicates that a platform provides the neccessary initialization hooks
+        for the dbgpin module.
+
 config HAS_EMULATOR_RENODE
     bool
     help
@@ -66,6 +67,13 @@ config HAS_ETHERNET
     bool
     help
         Indicates that Ethernet connectivity is present.
+
+config HAS_HIGHLEVEL_STDIO
+    bool
+    help
+        Indicates that a high-level stdio method (such as CDC ACM) is used.
+        This requires a running thread and set-up and will not print during
+        a crash.
 
 config HAS_LIBSTDCPP
     bool
@@ -91,6 +99,11 @@ config HAS_PERIPH_CAN
     bool
     help
         Indicates that a CAN peripheral is present.
+
+config HAS_PERIPH_CORETIMER
+    bool
+    help
+        Indicates that the CLINT timer can be used as timer peripheral
 
 config HAS_PERIPH_CPUID
     bool
@@ -122,10 +135,10 @@ config HAS_PERIPH_FLASHPAGE
     help
         Indicates that a Flashpage peripheral is present.
 
-config HAS_PERIPH_FLASHPAGE_RAW
+config HAS_PERIPH_FLASHPAGE_PAGEWISE
     bool
     help
-        Indicates that the Flashpage peripheral supports raw writing.
+        Indicates that the Flashpage peripheral supports pagewise writing.
 
 config HAS_PERIPH_FLASHPAGE_RWEE
     bool
@@ -203,6 +216,27 @@ config HAS_PERIPH_PM
     help
         Indicates that a Power Management (PM) peripheral is present.
 
+config HAS_PERIPH_PTP
+    bool
+    help
+        Indicates that a PTP clock is present.
+
+config HAS_PERIPH_PTP_SPEED_ADJUSTMENT
+    bool
+    help
+        Indicates that the PTP clock speed can be adjust. This can be used for clock drift correction and synchronization.
+
+config HAS_PERIPH_PTP_TIMER
+    bool
+    help
+        Indicates that the PTP clock can be used as timer.
+
+config HAS_PERIPH_PTP_TXRX_TIMESTAMPS
+    bool
+    help
+        Indicates that the PTP clock can provide exact time stamps of the
+        reception and transmission of frames.
+
 config HAS_PERIPH_PWM
     bool
     help
@@ -223,10 +257,20 @@ config HAS_PERIPH_RTT
     help
         Indicates that an RTT peripheral is present.
 
+config HAS_PERIPH_RTT_SET_COUNTER
+    bool
+    help
+        Indicates that the RTT peripheral implements rtt_set_counter().
+
 config HAS_PERIPH_SPI
     bool
     help
         Indicates that an SPI peripheral is present.
+
+config HAS_PERIPH_SPI_ON_QSPI
+    bool
+    help
+        Indicates that the QSPI peripheral can be used in SPI mode.
 
 config HAS_PERIPH_SPI_RECONFIGURE
     bool
@@ -293,6 +337,16 @@ config HAS_PERIPH_WDT_CB
     bool
     help
         Indicates that the WDT peripheral allows setting a callback.
+
+config HAS_PICOLIBC
+    bool
+    help
+        Indicates that the picolibc C library is available for the platform.
+
+config HAS_NEWLIB
+    bool
+    help
+        Indicates that the newlib C library is available for the platform.
 
 config HAS_PUF_SRAM
     bool

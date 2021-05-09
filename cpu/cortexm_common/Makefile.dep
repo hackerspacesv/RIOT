@@ -4,12 +4,8 @@ USEMODULE += cortexm_common
 # include common periph code
 USEMODULE += cortexm_common_periph
 
-ifeq (1,$(PICOLIBC))
-  # Use Picolibc when explicitly selected
-  USEMODULE += picolibc
-else
-  # all cortex MCU's use newlib as libc
-  USEMODULE += newlib
+FEATURES_REQUIRED_ANY += newlib|picolibc
+ifneq (,$(filter newlib,$(USEMODULE)))
   # use the nano-specs of Newlib when available
   USEMODULE += newlib_nano
 endif
@@ -27,3 +23,6 @@ endif
 ifeq (1, $(DEVELHELP))
   FEATURES_OPTIONAL += cortexm_mpu
 endif
+
+# Make calls to malloc and friends thread-safe
+USEMODULE += malloc_thread_safe

@@ -25,8 +25,6 @@
 #include "periph_conf.h"
 #include "periph_cpu.h"
 
-#include "edbg_eui.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -58,46 +56,6 @@ extern "C" {
 #define AT86RF2XX_PARAM_INT        GPIO_PIN(PB, 0)
 #define AT86RF2XX_PARAM_SLEEP      GPIO_PIN(PA, 20)
 #define AT86RF2XX_PARAM_RESET      GPIO_PIN(PB, 15)
-
-/**
- * @brief    EDBG provides a EUI-64, the same that is printed on the board
- */
-static inline int _edbg_get_eui64(const void *arg, eui64_t *addr)
-{
-    (void) arg;
-
-    /* EDBG can take a while to respond on cold boot */
-    unsigned tries = 10000;
-    while (--tries && edbg_get_eui64(addr)) {}
-    return tries ? 0 : -1;
-}
-
-/**
- * @name    EUI sources on the board
- *          EUI-64 inside EDBG for the internal radio
- * @{
- */
-#define EUI64_PROVIDER_FUNC   _edbg_get_eui64
-#define EUI64_PROVIDER_TYPE   NETDEV_AT86RF2XX
-#define EUI64_PROVIDER_INDEX  0
-/** @} */
-
-/**
- * @name    OpenWSN timing constants
- *
- * @{
- */
-/* Measured 800us + ~10% */
-#define PORT_maxTxDataPrepare   (900/PORT_US_PER_TICK)
-/* Measured 450us + ~10% */
-#define PORT_maxRxAckPrepare    (500/PORT_US_PER_TICK)
-/* Measured 500us + ~10% */
-#define PORT_maxRxDataPrepare   (550/PORT_US_PER_TICK)
-/* Measured 660us + ~10% */
-#define PORT_maxTxAckPrepare    (750/PORT_US_PER_TICK)
-/* Measured 650us with openwsn_sctimer_rtt */
-#define PORT_delayTx            (650/PORT_US_PER_TICK)
-/** @} */
 
 /**
  * @name    LED pin definitions and handlers

@@ -24,8 +24,11 @@
 #include "net/sock/async/event.h"
 #include "net/sock/udp.h"
 #include "net/sock/dtls.h"
+#include "net/sock/util.h"
 #include "net/ipv6/addr.h"
 #include "net/credman.h"
+#include "timex.h"
+#include "test_utils/expect.h"
 
 #include "tinydtls_common.h"
 #include "tinydtls_keys.h"
@@ -108,6 +111,8 @@ static void _dtls_handler(sock_dtls_t *sock, sock_async_flags_t type, void *arg)
 
     event_timeout_clear(&_timeouter);
     if (type & SOCK_ASYNC_CONN_RECV) {
+        expect(!sock_dtls_get_event_session(sock, &session));
+
         char *send_data = arg;
         puts("Session handshake received");
         if (sock_dtls_recv(sock, &session, _recv_buf, sizeof(_recv_buf),
@@ -133,9 +138,21 @@ static void _dtls_handler(sock_dtls_t *sock, sock_async_flags_t type, void *arg)
         _close_sock(sock);
     }
     if (type & SOCK_ASYNC_CONN_RDY) {
-        puts("Session became ready");
+        if (sock_dtls_get_event_session(sock, &session)) {
+            sock_udp_ep_t ep;
+            char addrstr[IPV6_ADDR_MAX_STR_LEN];
+            uint16_t port;
+
+            sock_dtls_session_get_udp_ep(&session, &ep);
+            sock_udp_ep_fmt(&ep, addrstr, &port);
+            printf("Session became ready: [%s]:%u\n", addrstr, port);
+        } else {
+            puts("A session became ready, but the corresponding " \
+                 "session could not be retrieved from socket");
+        }
     }
     if (type & SOCK_ASYNC_MSG_RECV) {
+        expect(!sock_dtls_get_event_session(sock, &session));
         int res;
 
         if ((res = sock_dtls_recv(sock, &session, _recv_buf, sizeof(_recv_buf),
@@ -170,7 +187,7 @@ static int client_send(char *addr_str, char *data)
     if (_sending) {
         puts("Already in the process of sending");
     }
-    event_timeout_init(&_timeouter, &event_queue_medium, &_timeout.super);
+    event_timeout_init(&_timeouter, EVENT_PRIO_MEDIUM, &_timeout.super);
     /* get interface */
     char* iface = ipv6_addr_split_iface(addr_str);
     if (iface) {
@@ -207,7 +224,7 @@ static int client_send(char *addr_str, char *data)
         return -1;
     }
 
-    sock_dtls_event_init(&_dtls_sock, &event_queue_medium, _dtls_handler,
+    sock_dtls_event_init(&_dtls_sock, EVENT_PRIO_MEDIUM, _dtls_handler,
                          data);
     res = credman_add(&credential);
     if (res < 0 && res != CREDMAN_EXIST) {

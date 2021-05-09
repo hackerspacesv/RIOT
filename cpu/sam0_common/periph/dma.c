@@ -21,13 +21,12 @@
 #include "periph_cpu.h"
 #include "periph_conf.h"
 #include "mutex.h"
-#include "assert.h"
 #include "bitarithm.h"
 #include "pm_layered.h"
 #include "thread_flags.h"
 #include "periph/gpio.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifndef CONFIG_DMA_NUMOF

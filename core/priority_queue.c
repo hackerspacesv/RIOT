@@ -22,7 +22,7 @@
 
 #include "priority_queue.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 void priority_queue_remove(priority_queue_t *root_, priority_queue_node_t *node)
@@ -72,7 +72,7 @@ void priority_queue_add(priority_queue_t *root, priority_queue_node_t *new_obj)
     new_obj->next = NULL;
 }
 
-#if ENABLE_DEBUG
+#if IS_ACTIVE(ENABLE_DEBUG)
 void priority_queue_print(priority_queue_t *root)
 {
     printf("queue:\n");

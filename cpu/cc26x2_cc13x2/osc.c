@@ -17,7 +17,6 @@
  * @}
  */
 
-#include <assert.h>
 #include "cpu.h"
 
 static inline bool _hf_source_ready(void)
@@ -54,7 +53,7 @@ void osc_hf_source_switch(uint32_t osc)
     _hf_source_set(osc);
 
     /* Wait for the oscillator to be ready */
-    while (_hf_source_ready()) {}
+    while (!_hf_source_ready()) {}
 
     /* If target clock source is RCOSC, change clock source for DCDC to RCOSC */
     if (osc == OSC_RCOSC_HF) {

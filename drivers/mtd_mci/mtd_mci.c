@@ -26,7 +26,7 @@
 #include "mtd.h"
 #include "sdcard_spi.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define min(a, b) ((a) > (b) ? (b) : (a))
@@ -40,7 +40,7 @@ static int mtd_mci_init(mtd_dev_t *dev)
         return -EIO;
     }
 
-    if (ENABLE_DEBUG) {
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
         uint32_t block_size;
         mci_ioctl(GET_BLOCK_SIZE, &block_size);
         DEBUG("block size: %lu\n", block_size);
@@ -143,4 +143,5 @@ const mtd_desc_t mtd_mci_driver = {
     .write_page     = mtd_mci_write_page,
     .erase_sector   = mtd_mci_erase_sector,
     .power          = mtd_mci_power,
+    .flags          = MTD_DRIVER_FLAG_DIRECT_WRITE,
 };

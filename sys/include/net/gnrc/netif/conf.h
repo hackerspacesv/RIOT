@@ -147,6 +147,8 @@ extern "C" {
 #define GNRC_NETIF_L2ADDR_MAXLEN   (IEEE802154_LONG_ADDRESS_LEN)
 #elif   MODULE_NETDEV_ETH
 #define GNRC_NETIF_L2ADDR_MAXLEN   (ETHERNET_ADDR_LEN)
+#elif   MODULE_NRF24L01P
+#define GNRC_NETIF_L2ADDR_MAXLEN   (5U)
 #elif   MODULE_CC110X
 #define GNRC_NETIF_L2ADDR_MAXLEN   (1U)
 #else
@@ -182,8 +184,8 @@ extern "C" {
  *
  * @experimental
  *
- * This feature is non compliant with RFC 4944 and might not be supported by
- * other implementations.
+ * This feature is non compliant with RFC 4944 and RFC 7668 and might not be
+ * supported by other implementations.
  */
 #ifndef CONFIG_GNRC_NETIF_NONSTANDARD_6LO_MTU
 #define CONFIG_GNRC_NETIF_NONSTANDARD_6LO_MTU 0

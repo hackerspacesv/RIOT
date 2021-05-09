@@ -20,6 +20,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -29,7 +30,7 @@
 #include "periph/timer.h"
 #include "periph_conf.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**
@@ -88,7 +89,7 @@ static inline void _irq_enable(tim_t tim)
     NVIC_EnableIRQ(timer_config[tim].irq);
 }
 
-static uint8_t _get_prescaler(unsigned long freq_out, unsigned long freq_in)
+static uint8_t _get_prescaler(uint32_t freq_out, uint32_t freq_in)
 {
     uint8_t scale = 0;
     while (freq_in > freq_out) {
@@ -135,7 +136,7 @@ static inline void _set_nfrq(tim_t tim)
 /**
  * @brief Setup the given timer
  */
-int timer_init(tim_t tim, unsigned long freq, timer_cb_t cb, void *arg)
+int timer_init(tim_t tim, uint32_t freq, timer_cb_t cb, void *arg)
 {
     const tc32_conf_t *cfg = &timer_config[tim];
     uint8_t scale = _get_prescaler(freq, sam0_gclk_freq(cfg->gclk_src));

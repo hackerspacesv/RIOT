@@ -1,12 +1,6 @@
-CPU = stm32
-CPU_MODEL = stm32f411ceu6
+CPU_MODEL = stm32f411ce
 
-# Put defined MCU peripherals here (in alphabetical order)
-FEATURES_PROVIDED += periph_adc
-FEATURES_PROVIDED += periph_i2c
-FEATURES_PROVIDED += periph_pwm
-FEATURES_PROVIDED += periph_rtc
-FEATURES_PROVIDED += periph_spi
-FEATURES_PROVIDED += periph_timer
-FEATURES_PROVIDED += periph_uart
-FEATURES_PROVIDED += periph_usbdev
+include $(RIOTBOARD)/common/weact-f4x1cx/Makefile.features
+
+# weact-f411ce provides a custom default Kconfig clock configuration
+KCONFIG_ADD_CONFIG += $(RIOTBOARD)/weact-f411ce/clock.config

@@ -124,6 +124,16 @@ enum {
 /** @} */
 
 /**
+ * @name    Default Battery Monitor trigger threshold (in mV)
+ *          if battery monitoring is enabled
+ * @{
+ */
+#ifndef CONFIG_AT86RF215_BATMON_THRESHOLD
+#define CONFIG_AT86RF215_BATMON_THRESHOLD       (1800)
+#endif
+/** @} */
+
+/**
  * @name    Default PHY Mode
  * @{
  */
@@ -197,6 +207,42 @@ enum {
 /** @} */
 
 /**
+ * @name    Default MR-FSK Symbol Rate
+ * @{
+ */
+#ifndef CONFIG_AT86RF215_DEFAULT_MR_FSK_SRATE
+#define CONFIG_AT86RF215_DEFAULT_MR_FSK_SRATE   FSK_SRATE_200K
+#endif
+/** @} */
+
+/**
+ * @name    Default MR-FSK Modulation Index, fraction of 64
+ * @{
+ */
+#ifndef CONFIG_AT86RF215_DEFAULT_MR_FSK_MOD_IDX
+#define CONFIG_AT86RF215_DEFAULT_MR_FSK_MOD_IDX (64)
+#endif
+/** @} */
+
+/**
+ * @name    Default MR-FSK Modulation Order
+ * @{
+ */
+#ifndef CONFIG_AT86RF215_DEFAULT_MR_FSK_MORD
+#define CONFIG_AT86RF215_DEFAULT_MR_FSK_MORD    FSK_MORD_4SFK
+#endif
+/** @} */
+
+/**
+ * @name    Default MR-FSK Forward Error Correction Scheme
+ * @{
+ */
+#ifndef CONFIG_AT86RF215_DEFAULT_MR_FSK_FEC
+#define CONFIG_AT86RF215_DEFAULT_MR_FSK_FEC     IEEE802154_FEC_NONE
+#endif
+/** @} */
+
+/**
  * @brief   Default TX power (0dBm)
  */
 #ifndef CONFIG_AT86RF215_DEFAULT_TXPOWER
@@ -227,13 +273,36 @@ enum {
 };
 
 /**
+ * @name    Clock Output Driver Strength
+ * @{
+ */
+typedef enum {
+    AT86RF215_CLKO_2mA = 0 << 3,    /**< 2 mA */
+    AT86RF215_CLKO_4mA = 1 << 3,    /**< 4 mA */
+    AT86RF215_CLKO_6mA = 2 << 3,    /**< 6 mA */
+    AT86RF215_CLKO_8mA = 3 << 3,    /**< 8 mA */
+} at86rf215_clko_cur_t;
+/** @} */
+
+/**
+ * @name    Clock Output Frequency
+ * @{
+ */
+typedef enum {
+    AT86RF215_CLKO_OFF = 0,         /**< Clock Output Disabled  */
+    AT86RF215_CLKO_26_MHz,          /**< 26 MHz */
+    AT86RF215_CLKO_32_MHz,          /**< 32 MHz */
+    AT86RF215_CLKO_16_MHz,          /**< 16 MHz */
+    AT86RF215_CLKO_8_MHz,           /**<  8 MHz */
+    AT86RF215_CLKO_4_MHz,           /**<  4 MHz */
+    AT86RF215_CLKO_2_MHz,           /**<  2 MHz */
+    AT86RF215_CLKO_1_MHz,           /**<  1 MHz */
+} at86rf215_clko_freq_t;
+
+/**
  * @name    Internal device option flags
  * @{
  */
-#define AT86RF215_OPT_TELL_TX_START  (0x0001)       /**< notify MAC layer on TX start */
-#define AT86RF215_OPT_TELL_TX_END    (0x0002)       /**< notify MAC layer on TX finished */
-#define AT86RF215_OPT_TELL_RX_START  (0x0004)       /**< notify MAC layer on RX start */
-#define AT86RF215_OPT_TELL_RX_END    (0x0008)       /**< notify MAC layer on RX finished */
 #define AT86RF215_OPT_CSMA           (0x0010)       /**< CSMA active */
 #define AT86RF215_OPT_PROMISCUOUS    (0x0020)       /**< promiscuous mode active */
 #define AT86RF215_OPT_PRELOADING     (0x0040)       /**< preloading enabled */
@@ -290,6 +359,9 @@ typedef struct at86rf215 {
     uint8_t retries;                        /**< retries left */
     uint8_t csma_retries_max;               /**< number of retries until channel is clear */
     uint8_t csma_retries;                   /**< CSMA retries left */
+#ifdef MODULE_NETDEV_IEEE802154_MR_FSK
+    uint8_t fsk_pl;                         /**< FSK Preamble Length */
+#endif
     uint8_t csma_minbe;                     /**< CSMA minimum backoff exponent */
     uint8_t csma_maxbe;                     /**< CSMA maximum backoff exponent */
     int8_t  csma_ed;                        /**< CSMA energy detect threshold */
@@ -478,6 +550,42 @@ int8_t at86rf215_get_ed_level(at86rf215_t *dev);
 void at86rf215_set_option(at86rf215_t *dev, uint16_t option, bool state);
 
 /**
+ * @brief   Set crystal oscillator trim value.
+ *
+ *          An internal capacitance array is connected to the
+ *          crystal oscillator pins TCXO and XTAL2.
+ *
+ *          Each increment of the trim value adds 0.3pF capacitance
+ *          to the oscillator circuit.
+ *
+ *          To trim a board, enable the clock output with
+ *          @ref at86rf215_set_clock_output and connect a frequency
+ *          counter to the clock output pin.
+ *          Then adjust the trim value until it the measured frequency
+ *          closely matches the configured output frequency.
+ *
+ *          It is recommended to use a 26 MHz output frequency for the
+ *          test as this is the raw frequency of the external oscillator.
+ *
+ *          The resulting trim value must then be stored in a persistent
+ *          memory area of the board to be set via @ref CONFIG_AT86RF215_TRIM_VAL
+ *
+ * @param[in] dev           device to configure
+ * @param[in] trim          trim value
+ */
+void at86rf215_set_trim(at86rf215_t *dev, uint8_t trim);
+
+/**
+ * @brief   Configure the Clock Output pin
+ *
+ * @param[in] dev           device to configure
+ * @param[in] cur           Clock output current
+ * @param[in] freq          Clock output frequency
+ */
+void at86rf215_set_clock_output(at86rf215_t *dev,
+                                at86rf215_clko_cur_t cur, at86rf215_clko_freq_t freq);
+
+/**
  * @brief   Convenience function for simply sending data
  *
  * @note This function ignores the PRELOADING option
@@ -551,6 +659,24 @@ void at86rf215_tx_done(at86rf215_t *dev);
  * @return                  false if channel is determined busy
  */
 bool at86rf215_cca(at86rf215_t *dev);
+
+/**
+ * @brief   Generate an interrupt if supply voltage drops below the configured
+ *          threshold.
+ *
+ * @param[in] dev           device to configure
+ * @param[in] voltage       Threshold voltage in mV
+ *
+ * @return                  0 on success, error otherwise
+ */
+int at86rf215_enable_batmon(at86rf215_t *dev, unsigned voltage);
+
+/**
+ * @brief   Disable the Battery Monitor interrupt.
+ *
+ * @param[in] dev           device to configure
+ */
+void at86rf215_disable_batmon(at86rf215_t *dev);
 
 #ifdef __cplusplus
 }

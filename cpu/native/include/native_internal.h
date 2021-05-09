@@ -50,8 +50,6 @@
 #include <sys/stat.h>
 #include <sys/uio.h>
 
-#include "kernel_types.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -182,8 +180,6 @@ int register_interrupt(int sig, _native_callback_t handler);
  * unregister interrupt handler for interrupt sig
  */
 int unregister_interrupt(int sig);
-
-//#include <sys/param.h>
 
 #ifdef __cplusplus
 }

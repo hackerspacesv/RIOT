@@ -17,6 +17,7 @@
 
 #define USB_H_USER_IS_RIOT_INTERNAL
 
+#include <assert.h>
 #include <string.h>
 
 #include "kernel_defines.h"
@@ -29,7 +30,7 @@
 #include "net/netdev/eth.h"
 #include "usb/usbus/cdc/ecm.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static const netdev_driver_t netdev_driver_cdcecm;

@@ -107,23 +107,27 @@ extern "C" {
 /* The minimum block size which can be written is 4B. However, the erase
  * block is always FLASHPAGE_SIZE.
  */
-#define FLASHPAGE_RAW_BLOCKSIZE    (4U)
+#define FLASHPAGE_WRITE_BLOCK_SIZE      (4U)
 /* Writing should be always 4 bytes aligned */
-#define FLASHPAGE_RAW_ALIGNMENT    (4U)
+#define FLASHPAGE_WRITE_BLOCK_ALIGNMENT (4U)
 /** @} */
 
+#ifdef CPU_MODEL_NRF52840XXAA
 /**
- * @brief   SoftDevice settings
+ * @name    OpenWSN timing constants
+ *
  * @{
  */
-#ifdef SOFTDEVICE_PRESENT
-#ifndef DONT_OVERRIDE_NVIC
-#include "nrf_soc.h"
-#undef NVIC_SetPriority
-#define NVIC_SetPriority    sd_nvic_SetPriority
-#endif /* DONT_OVERRIDE_NVIC */
-#endif /* SOFTDEVICE_PRESENT */
+/* Taken from OpenWSN @32.768Hz */
+#define PORT_maxTxDataPrepare   (400/PORT_US_PER_TICK)
+#define PORT_maxRxAckPrepare    (400/PORT_US_PER_TICK)
+#define PORT_maxRxDataPrepare   (400/PORT_US_PER_TICK)
+#define PORT_maxTxAckPrepare    (400/PORT_US_PER_TICK)
+/* Measured 220us */
+#define PORT_delayTx            (300/PORT_US_PER_TICK)
+#define PORT_delayRx            (150/PORT_US_PER_TICK)
 /** @} */
+#endif
 
 /**
  * @brief   Put the CPU in the low-power 'wait for event' state

@@ -1,17 +1,24 @@
 include $(RIOTCPU)/stm32/stm32_info.mk
 
-FEATURES_PROVIDED += bootloader_stm32
+ifneq (mp1,$(CPU_FAM))
+  FEATURES_PROVIDED += bootloader_stm32
+  FEATURES_PROVIDED += periph_wdt
+endif
 FEATURES_PROVIDED += cpu_stm32$(CPU_FAM)
 FEATURES_PROVIDED += periph_cpuid
 FEATURES_PROVIDED += periph_gpio periph_gpio_irq
 FEATURES_PROVIDED += periph_timer_periodic
 FEATURES_PROVIDED += periph_uart_modecfg
 FEATURES_PROVIDED += periph_uart_nonblocking
-FEATURES_PROVIDED += periph_wdt
 
-ifneq (,$(filter $(CPU_FAM),f0 f1 f3 g0 g4 l0 l1 l4 wb))
+ifneq (,$(filter $(CPU_FAM),f0 f1 f3 g0 g4 l0 l1 l4 l5 wb))
   FEATURES_PROVIDED += periph_flashpage
-  FEATURES_PROVIDED += periph_flashpage_raw
+  FEATURES_PROVIDED += periph_flashpage_pagewise
+endif
+
+# The f2, f4 and f7 do not support the pagewise api
+ifneq (,$(filter $(CPU_FAM),f2 f4 f7))
+  FEATURES_PROVIDED += periph_flashpage
 endif
 
 ifneq (,$(filter $(CPU_FAM),l0 l1))
@@ -21,17 +28,18 @@ endif
 ifeq (f1,$(CPU_FAM))
   FEATURES_CONFLICT += periph_rtc:periph_rtt
   FEATURES_CONFLICT_MSG += "On the STM32F1, the RTC and RTT map to the same hardware peripheral."
+  FEATURES_PROVIDED += periph_rtt_set_counter
 endif
 
 # Not all F4 and L0 parts implement a RNG.
-CPU_MODELS_WITHOUT_HWRNG = stm32f401% stm32f411% stm32f446% stm32l031%
-ifneq (,$(filter $(CPU_FAM),f2 f4 f7 g4 l0 l4 wb))
+CPU_MODELS_WITHOUT_HWRNG = stm32f401% stm32f411% stm32f446% stm32l031% stm32l011%
+ifneq (,$(filter $(CPU_FAM),f2 f4 f7 g4 l0 l4 l5 wb))
   ifeq (,$(filter $(CPU_MODELS_WITHOUT_HWRNG),$(CPU_MODEL)))
     FEATURES_PROVIDED += periph_hwrng
   endif
 endif
 
-ifneq (,$(filter $(CPU_FAM),f2 f4 f7 g4 l1 l4))
+ifneq (,$(filter $(CPU_FAM),f2 f4 f7 g4 l1 l4 mp1))
   FEATURES_PROVIDED += cortexm_mpu
 endif
 

@@ -19,12 +19,13 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdbool.h>
 
 #include "net/gnrc.h"
 #include "net/gnrc/mac/internal.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #if ((GNRC_MAC_TX_QUEUE_SIZE != 0) || (GNRC_MAC_RX_QUEUE_SIZE != 0))

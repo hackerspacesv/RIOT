@@ -73,12 +73,18 @@ typedef uint32_t gpio_t;
  * @brief   Macro for accessing GPIO pins
  * @{
  */
-#ifdef CPU_FAM_SAML11
-#define GPIO_PIN(x, y)      (((gpio_t)(&PORT_SEC->Group[x])) | y)
-#elif defined(PORT_IOBUS)   /* Use IOBUS access when available */
+#ifdef MODULE_PERIPH_GPIO_FAST_READ
+#ifdef PORT_IOBUS_SEC
+#define GPIO_PIN(x, y)      (((gpio_t)(&PORT_IOBUS_SEC->Group[x])) | y)
+#else /* Use IOBUS access when available */
 #define GPIO_PIN(x, y)      (((gpio_t)(&PORT_IOBUS->Group[x])) | y)
+#endif /* PORT_IOBUS_SEC */
+#else
+#ifdef PORT_SEC
+#define GPIO_PIN(x, y)      (((gpio_t)(&PORT_SEC->Group[x])) | y)
 #else
 #define GPIO_PIN(x, y)      (((gpio_t)(&PORT->Group[x])) | y)
+#endif /* PORT_IOBUS_SEC */
 #endif
 
 /**
@@ -141,6 +147,7 @@ typedef enum {
     GPIO_MUX_F = 0x5,       /**< select peripheral function F */
     GPIO_MUX_G = 0x6,       /**< select peripheral function G */
     GPIO_MUX_H = 0x7,       /**< select peripheral function H */
+    GPIO_MUX_L = 0xb,       /**< select peripheral function L */
 } gpio_mux_t;
 #endif
 
@@ -325,9 +332,9 @@ typedef struct {
  */
 typedef enum {
     SPI_PAD_MISO_0 = 0x0,       /**< use pad 0 for MISO line */
-    SPI_PAD_MISO_1 = 0x1,       /**< use pad 0 for MISO line */
-    SPI_PAD_MISO_2 = 0x2,       /**< use pad 0 for MISO line */
-    SPI_PAD_MISO_3 = 0x3,       /**< use pad 0 for MISO line */
+    SPI_PAD_MISO_1 = 0x1,       /**< use pad 1 for MISO line */
+    SPI_PAD_MISO_2 = 0x2,       /**< use pad 2 for MISO line */
+    SPI_PAD_MISO_3 = 0x3,       /**< use pad 3 for MISO line */
 } spi_misopad_t;
 
 /**
@@ -383,7 +390,7 @@ typedef enum {
  * @brief   SPI device configuration
  */
 typedef struct {
-    SercomSpi *dev;         /**< pointer to the used SPI device */
+    void *dev;              /**< pointer to the used SPI device */
     gpio_t miso_pin;        /**< used MISO pin */
     gpio_t mosi_pin;        /**< used MOSI pin */
     gpio_t clk_pin;         /**< used CLK pin */
@@ -768,6 +775,48 @@ typedef struct {
 } adc_conf_chan_t;
 
 /**
+ * @name Ethernet peripheral parameters
+ * @{
+ */
+#ifndef ETH_RX_BUFFER_COUNT
+#define ETH_RX_BUFFER_COUNT (4)
+#endif
+
+#ifndef ETH_TX_BUFFER_COUNT
+#define ETH_TX_BUFFER_COUNT (4)
+#endif
+
+#ifndef ETH_RX_BUFFER_SIZE
+#define ETH_RX_BUFFER_SIZE (1536)
+#endif
+
+#ifndef ETH_TX_BUFFER_SIZE
+#define ETH_TX_BUFFER_SIZE (1536)
+#endif
+/** @} */
+
+/**
+ * @brief Ethernet parameters struct
+ */
+#if defined(GMAC_INST_NUM) || defined(DOXYGEN)
+typedef struct {
+    Gmac *dev;                /**< ptr to the device registers */
+    gpio_t refclk;            /**< REFCLK gpio */
+    gpio_t txen;              /**< TXEN gpio */
+    gpio_t txd0;              /**< TXD0 gpio */
+    gpio_t txd1;              /**< TXD1 gpio */
+    gpio_t crsdv;             /**< CRSDV gpio */
+    gpio_t rxd0;              /**< RXD0 gpio */
+    gpio_t rxd1;              /**< RXD1 gpio */
+    gpio_t rxer;              /**< RXER gpio */
+    gpio_t mdc;               /**< MII interface, clock gpio */
+    gpio_t mdio;              /**< MII interface, data gpio */
+    gpio_t rst_pin;           /**< PHY reset gpio */
+    gpio_t int_pin;           /**< PHY interrupt gpio */
+} sam0_common_gmac_config_t;
+#endif
+
+/**
  * @brief USB peripheral parameters
  */
 #if defined(USB_INST_NUM) || defined(DOXYGEN)
@@ -800,6 +849,7 @@ typedef struct {
  */
 #define WDT_HAS_INIT                   (1)
 
+#if defined(REV_DMAC) || DOXYGEN
 /**
  * @name sam0 DMA peripheral
  * @{
@@ -1068,6 +1118,7 @@ void dma_wait(dma_t dma);
  */
 void dma_cancel(dma_t dma);
 /** @} */
+#endif /* REV_DMAC || DOXYGEN */
 
 /**
  * @name sam0 RTC Tamper Detection
@@ -1093,6 +1144,99 @@ int rtc_tamper_register(gpio_t pin, gpio_flank_t flank);
  * @brief   Enable Tamper Detection IRQs
  */
 void rtc_tamper_enable(void);
+
+/**
+ * @brief   Get and clear the RTC tamper event that has woken the CPU
+ *          from Deep Sleep.
+ *
+ * @return  The set bits in the return value correspond to the tamper
+ *          pin index inside the @ref rtc_tamper_pins array.
+ */
+uint8_t rtc_get_tamper_event(void);
+
+/**
+ * @brief   Get the tamper event mask for a certain pin.
+ *          Can be used together with @ref rtc_get_tamper_event to
+ *          check which RTC  pin caused the tamper event.
+ *
+ * @param pin   Pin to query
+ *
+ * @return  Bit mask with the bit corresponding to @p pin set
+ *          0 if @p pin is no RTC tamper pin
+ */
+uint8_t rtc_tamper_pin_mask(gpio_t pin);
+/** @} */
+
+/**
+ * @name sam0 User Configuration
+ *
+ *      The MCUs of this family contain a region of memory that is used to store
+ *      CPU configuration & calibration data.
+ *      It can be used to set persistent settings and has some additional space
+ *      to store user configuration data.
+ * @{
+ */
+
+/**
+ * @brief MCU configuration applied on start. The contents of this struct differ
+ *        between families.
+ */
+typedef struct sam0_aux_cfg_mapping nvm_user_page_t;
+
+/**
+ * @brief   Size of the free to use auxiliary area in the user page
+ */
+#ifdef FLASH_USER_PAGE_SIZE
+#define FLASH_USER_PAGE_AUX_SIZE (FLASH_USER_PAGE_SIZE - sizeof(nvm_user_page_t))
+#else
+#define FLASH_USER_PAGE_AUX_SIZE (AUX_PAGE_SIZE * AUX_NB_OF_PAGES - sizeof(nvm_user_page_t))
+#endif
+
+/**
+ * @brief   Reset the configuration area, apply a new configuration.
+ *
+ *
+ * @param   cfg     New MCU configuration, may be NULL.
+ *                  If cfg is NULL, this will clear the configuration area
+ *                  and apply the current configuration again.
+ */
+void sam0_flashpage_aux_reset(const nvm_user_page_t *cfg);
+
+/**
+ * @brief   Write data to the user configuration area.
+ *          This will write data to the remaining space after @see nvm_user_page_t
+ *          The size of this area depends on the MCU family used.
+ *
+ *          Will only write bits 1 -> 0. To reset bits to 1, call @see sam0_flashpage_aux_reset
+ *          This will reset the whole user area configuration.
+ *
+ *          Arbitrary data lengths and offsets are supported.
+ *
+ * @param   offset  Byte offset after @see nvm_user_page_t
+ *                  must be less than `FLASH_USER_PAGE_AUX_SIZE`
+ * @param   data    The data to write
+ * @param   len     Size of the data
+ */
+void sam0_flashpage_aux_write(uint32_t offset, const void *data, size_t len);
+
+/**
+ * @brief   Get pointer to data in the user configuration area.
+ *
+ * @param   offset  Byte offset after @see nvm_user_page_t
+ *                  must be less than `FLASH_USER_PAGE_AUX_SIZE`
+ * @return  Pointer to the data in the User Page
+ */
+#define sam0_flashpage_aux_get(offset)  \
+    (const void*)((uint8_t*)NVMCTRL_USER + sizeof(nvm_user_page_t) + (offset))
+
+/**
+ * @brief   Get pointer to data in the CPU configuration struct
+ *
+ * @return  Pointer to the @ref nvm_user_page_t structure
+ */
+#define sam0_flashpage_aux_cfg() \
+    ((const nvm_user_page_t*)NVMCTRL_USER)
+
 /** @} */
 
 #ifdef __cplusplus

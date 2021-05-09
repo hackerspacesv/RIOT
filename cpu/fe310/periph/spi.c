@@ -29,8 +29,13 @@
 
 #include "vendor/spi.h"
 
-#define ENABLE_DEBUG        (0)
+#define ENABLE_DEBUG        0
 #include "debug.h"
+
+#define SPI_CLK_NUMOF       ARRAY_SIZE(_spi_clks)
+
+/* DIV_UP is division which rounds up instead of down */
+#define SPI_DIV_UP(a, b)    (((a) + ((b) - 1)) / (b))
 
 static const uint32_t _spi_clks[] = {
     100000,
@@ -40,12 +45,7 @@ static const uint32_t _spi_clks[] = {
     10000000,
 };
 
-#define SPI_CLK_NUMOF       ARRAY_SIZE(_spi_clks)
-
 static uint32_t _spi_clks_config[SPI_CLK_NUMOF] = { 0 };
-
-/* DIV_UP is division which rounds up instead of down */
-#define SPI_DIV_UP(a,b) (((a) + ((b) - 1)) / (b))
 
 /**
  * @brief   Allocation device locks
@@ -82,7 +82,7 @@ void spi_init_pins(spi_t dev)
         (1 << spi_config[dev].sclk);
 
     /* Enable I/O Function 0 */
-    GPIO_REG(GPIO_IOF_EN)  |=  spi1_pins;
+    GPIO_REG(GPIO_IOF_EN) |=  spi1_pins;
     GPIO_REG(GPIO_IOF_SEL) &= ~spi1_pins;
 }
 
@@ -109,7 +109,7 @@ int spi_acquire(spi_t dev, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
 
     mutex_lock(&lock);
 
-    _REG32(spi_config[dev].addr, SPI_REG_SCKDIV)  = _spi_clks_config[clk];
+    _REG32(spi_config[dev].addr, SPI_REG_SCKDIV) = _spi_clks_config[clk];
     _REG32(spi_config[dev].addr, SPI_REG_SCKMODE) = mode;
 
     return SPI_OK;
@@ -141,7 +141,7 @@ void spi_transfer_bytes(spi_t dev, spi_cs_t cs, bool cont,
         _REG32(spi_config[dev].addr, SPI_REG_TXFIFO) = out ? out[i] : 0;
 
         uint32_t rxdata;
-        do  {
+        do {
             rxdata = _REG32(spi_config[dev].addr, SPI_REG_RXFIFO);
         } while (rxdata & SPI_RXFIFO_EMPTY);
 

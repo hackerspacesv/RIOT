@@ -36,7 +36,7 @@
 #include "msg.h"
 #endif /* MODULE_CORE_MSG */
 #include "mutex.h"
-#include "kernel_types.h"
+#include "sched.h"
 #include "rmutex.h"
 
 #ifdef MODULE_ZTIMER_XTIMER_COMPAT
@@ -145,6 +145,13 @@ void xtimer_init(void);
  * @param[in] seconds   the amount of seconds the thread should sleep
  */
 static inline void xtimer_sleep(uint32_t seconds);
+
+/**
+ * @brief Pause the execution of a thread for some milliseconds
+ *
+ * @param[in] milliseconds  the amount of milliseconds the thread should sleep
+ */
+static inline void xtimer_msleep(uint32_t milliseconds);
 
 /**
  * @brief Pause the execution of a thread for some microseconds

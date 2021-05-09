@@ -18,9 +18,11 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "uri_parser.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* strchr for non-Null-terminated strings (buffers) */
@@ -53,7 +55,7 @@ static char *_consume_scheme(uri_parser_result_t *result, char *uri,
     result->scheme_len = p - uri;
 
     /* check if authority part exists '://' */
-    if ((p[1] != '\0') && (p[2] != '\0') && (p[1] == '/') && (p[2] == '/')) {
+    if (((uri_end - p) > 2) && (p[1] == '/') && (p[2] == '/')) {
         *has_authority = true;
         /* skip '://' */
         return p + 3;
@@ -73,9 +75,16 @@ void _consume_userinfo(uri_parser_result_t *result, char *uri,
     if (userinfo_end) {
         result->userinfo = uri;
         result->userinfo_len = userinfo_end - uri;
-        /* shift host part beyond userinfo and '@' */
-        result->host += result->userinfo_len + 1;
-        result->host_len -= result->userinfo_len + 1;
+
+        /* shift host part beyond userinfo and '@', but only if possible */
+        unsigned offset = result->userinfo_len + 1;
+        if ((result->host + offset) > authority_end) {
+            result->host_len = 0;
+            return;
+        }
+
+        result->host_len -= offset;
+        result->host += offset;
     }
 }
 
@@ -123,6 +132,11 @@ static char *_consume_authority(uri_parser_result_t *result, char *uri,
     /* consume userinfo, if available */
     _consume_userinfo(result, uri, authority_end);
 
+    /* host is empty */
+    if (result->host_len == 0) {
+        return authority_end;
+    }
+
     char *ipv6_end = NULL;
     /* validate IPv6 form */
     if (result->host[0] == '[') {
@@ -131,6 +145,25 @@ static char *_consume_authority(uri_parser_result_t *result, char *uri,
         if (ipv6_end >= authority_end) {
             return NULL;
         }
+
+        char *zoneid_start = _strchrb(result->host, ipv6_end, '%');
+        if (zoneid_start) {
+            /* skip % */
+            result->zoneid = zoneid_start + 1;
+            result->zoneid_len = ipv6_end - result->zoneid;
+
+            /* zoneid cannot be empty */
+            if (result->zoneid_len == 0) {
+                return NULL;
+            }
+        }
+
+        /* remove '[', ']', and '%' zoneid from ipv6addr */
+        result->ipv6addr = result->host + 1;
+        result->ipv6addr_len = ipv6_end - result->ipv6addr;
+        if (result->zoneid) {
+            result->ipv6addr_len -= result->zoneid_len + 1;
+        }
     }
 
     /* consume port, if available */
@@ -138,11 +171,6 @@ static char *_consume_authority(uri_parser_result_t *result, char *uri,
         return NULL;
     }
 
-    /* do not allow empty host if userinfo or port are set */
-    if ((result->host_len == 0) &&
-        (result->userinfo || result->port)) {
-        return NULL;
-    }
     /* this includes the '/' */
     return authority_end;
 }
@@ -196,6 +224,11 @@ static int _parse_absolute(uri_parser_result_t *result, char *uri,
         return -1;
     }
 
+    if (uri >= uri_end) {
+        /* nothing more to consume */
+        return 0;
+    }
+
     if (has_authority) {
         uri = _consume_authority(result, uri, uri_end);
         if (uri == NULL) {
@@ -203,8 +236,12 @@ static int _parse_absolute(uri_parser_result_t *result, char *uri,
         }
     }
 
-    /* parsing the path, starting with '/' */
-    return _parse_relative(result, uri, uri_end);
+    /* is there more to parse after authority? */
+    if (uri < uri_end) {
+        /* parsing the path, starting with '/' */
+        return _parse_relative(result, uri, uri_end);
+    }
+    return 0;
 }
 
 bool uri_parser_is_absolute(const char *uri, size_t uri_len)

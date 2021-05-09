@@ -12,6 +12,8 @@
  * @file
  */
 
+#include <assert.h>
+
 #include "net/ipv6.h"
 #include "net/gnrc/icmpv6.h"
 #include "net/gnrc/netif.h"
@@ -19,7 +21,7 @@
 
 #include "net/gnrc/icmpv6/error.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* all error messages are basically the same size and format */
@@ -221,7 +223,7 @@ static void _send(gnrc_pktsnip_t *pkt, const gnrc_pktsnip_t *orig_pkt,
                 return;
             }
             gnrc_netif_hdr_set_netif(netif->data, iface);
-            LL_PREPEND(pkt, netif);
+            pkt = gnrc_pkt_prepend(pkt, netif);
         }
         if (!gnrc_netapi_dispatch_send(GNRC_NETTYPE_IPV6,
                                        GNRC_NETREG_DEMUX_CTX_ALL,

@@ -26,8 +26,18 @@ export KCONFIG_AUTOHEADER_HEADER
 # This file will contain the calculated dependencies formated in Kconfig
 export KCONFIG_GENERATED_DEPENDENCIES = $(GENERATED_DIR)/Kconfig.dep
 
-# This file will contain application default configurations
-KCONFIG_APP_CONFIG = $(APPDIR)/app.config
+# This file will contain external module configurations
+export KCONFIG_EXTERNAL_CONFIGS = $(GENERATED_DIR)/Kconfig.external_modules
+
+# Add configurations that only work when running the Kconfig test so far,
+# because they activate modules.
+ifeq (1,$(TEST_KCONFIG))
+  # This file will contain application default configurations
+  KCONFIG_APP_CONFIG = $(APPDIR)/app.config.test
+else
+  # This file will contain application default configurations
+  KCONFIG_APP_CONFIG = $(APPDIR)/app.config
+endif
 
 # Default and user overwritten configurations
 KCONFIG_USER_CONFIG = $(APPDIR)/user.config
@@ -43,20 +53,14 @@ KCONFIG_OUT_CONFIG = $(GENERATED_DIR)/out.config
 # whenever a change occurs on one of the previously used Kconfig files.
 KCONFIG_OUT_DEP = $(KCONFIG_OUT_CONFIG).d
 
-# Include configuration symbols if available. This allows to check for Kconfig
-# symbols in makefiles. Make tries to 'remake' all included files (see
-# https://www.gnu.org/software/make/manual/html_node/Remaking-Makefiles.html).
--include $(KCONFIG_OUT_CONFIG)
-
 # Add configurations to merge, in ascendent priority (i.e. a file overrides the
 # previous ones).
-ifeq (1, $(TEST_KCONFIG))
-  # KCONFIG_ADD_CONFIG holds a list of .config files that are merged for the
-  # initial configuration. This allows to split configurations in common files
-  # and share them among boards or cpus.
-  MERGE_SOURCES += $(KCONFIG_ADD_CONFIG)
-endif
-
+#
+# KCONFIG_ADD_CONFIG holds a list of .config files that are merged for the
+# initial configuration. This allows to split configurations in common files
+# and share them among boards or cpus.
+# This file will contain application default configurations used for Kconfig Test
+MERGE_SOURCES += $(KCONFIG_ADD_CONFIG)
 MERGE_SOURCES += $(wildcard $(KCONFIG_APP_CONFIG))
 MERGE_SOURCES += $(wildcard $(KCONFIG_USER_CONFIG))
 
@@ -79,13 +83,26 @@ $(GENERATED_DIR): $(if $(MAKE_RESTARTS),,$(CLEAN))
 # build.
 SHOULD_RUN_KCONFIG ?= $(or $(wildcard $(APPDIR)/*.config), \
                            $(wildcard $(APPDIR)/Kconfig), \
-                           $(if $(CLEAN),,$(wildcard $(KCONFIG_OUT_CONFIG))), \
-                           $(filter menuconfig, $(MAKECMDGOALS)))
+                           $(if $(CLEAN),,$(wildcard $(KCONFIG_OUT_CONFIG))))
+
+ifneq (,$(filter menuconfig, $(MAKECMDGOALS)))
+  SHOULD_RUN_KCONFIG := 1
+endif
+
+# When testing Kconfig we should always run it
+ifeq (1,$(TEST_KCONFIG))
+  SHOULD_RUN_KCONFIG := 1
+endif
 
 # export variable to make it visible in other Makefiles
 export SHOULD_RUN_KCONFIG
 
 ifneq (,$(SHOULD_RUN_KCONFIG))
+
+# Include configuration symbols if available. This allows to check for Kconfig
+# symbols in makefiles. Make tries to 'remake' all included files (see
+# https://www.gnu.org/software/make/manual/html_node/Remaking-Makefiles.html).
+-include $(KCONFIG_OUT_CONFIG)
 
 # Add configuration header to build dependencies
 BUILDDEPS += $(KCONFIG_GENERATED_AUTOCONF_HEADER_C) $(FIXDEP)
@@ -126,6 +143,23 @@ $(KCONFIG_GENERATED_DEPENDENCIES): FORCE | $(GENERATED_DIR)
 	      printf "config %s\n\tbool\n\tdefault y\n", toupper($$0)}' \
 	  | $(LAZYSPONGE) $(LAZYSPONGE_FLAGS) $@
 
+# All directories in EXTERNAL_MODULES_DIR which have a Kconfig file
+EXTERNAL_MODULE_KCONFIGS ?= $(sort $(foreach dir,$(EXTERNAL_MODULE_DIRS),\
+                              $(wildcard $(dir)/Kconfig)))
+# Build a Kconfig file that source all external modules configuration
+# files. Every EXTERNAL_MODULE_DIRS with a Kconfig file is written to
+# KCONFIG_EXTERNAL_CONFIGS as 'osource dir/Kconfig'
+$(KCONFIG_EXTERNAL_CONFIGS): FORCE | $(GENERATED_DIR)
+	$(Q)\
+	if [ -n "$(EXTERNAL_MODULE_KCONFIGS)" ] ; then  \
+		printf "%s\n" $(EXTERNAL_MODULE_KCONFIGS) \
+		| awk '{ printf "osource \"%s\"\n", $$0 }' \
+		| $(LAZYSPONGE) $(LAZYSPONGE_FLAGS) $@ ; \
+	else \
+		printf "# no external modules" \
+		| $(LAZYSPONGE) $(LAZYSPONGE_FLAGS) $@ ; \
+	fi
+
 # When the 'clean' target is called, the files inside GENERATED_DIR should be
 # regenerated. For that, we conditionally change GENERATED_DIR from an 'order
 # only' requisite to a normal one.
@@ -142,11 +176,13 @@ GENERATED_DIR_DEP := $(if $(CLEAN),,|) $(GENERATED_DIR)
 # Generates a .config file by merging multiple sources specified in
 # MERGE_SOURCES. This will also generate KCONFIG_OUT_DEP with the list of used
 # Kconfig files.
+$(KCONFIG_OUT_CONFIG): $(KCONFIG_EXTERNAL_CONFIGS)
 $(KCONFIG_OUT_CONFIG): $(GENERATED_DEPENDENCIES_DEP) $(GENCONFIG) $(MERGE_SOURCES) $(GENERATED_DIR_DEP)
 	$(Q) $(GENCONFIG) \
 	  --config-out=$(KCONFIG_OUT_CONFIG) \
 	  --file-list $(KCONFIG_OUT_DEP) \
-	  --kconfig-filename $(KCONFIG) \
+	  --kconfig-filename $(KCONFIG) $(if $(Q),,--debug )\
+	  $(if $(filter 1,$(KCONFIG_IGNORE_CONFIG_ERRORS)), --ignore-config-errors) \
 	  --config-sources $(MERGE_SOURCES) && \
 	  touch $(KCONFIG_OUT_CONFIG)
 
@@ -161,11 +197,27 @@ $(KCONFIG_GENERATED_AUTOCONF_HEADER_C): $(KCONFIG_OUT_CONFIG) $(GENERATED_DIR_DE
 	$(Q) $(GENCONFIG) \
 	  --header-path $(KCONFIG_GENERATED_AUTOCONF_HEADER_C) \
 	  --sync-deps $(KCONFIG_SYNC_DIR) \
-	  --kconfig-filename $(KCONFIG) \
+	  --kconfig-filename $(KCONFIG) $(if $(Q),,--debug ) \
+	   $(if $(filter 1,$(KCONFIG_IGNORE_CONFIG_ERRORS)), --ignore-config-errors) \
 	  --config-sources $(KCONFIG_OUT_CONFIG) && \
 	  touch $(KCONFIG_GENERATED_AUTOCONF_HEADER_C)
 
 # Try to load the list of Kconfig files used
 -include $(KCONFIG_OUT_DEP)
+
+# capture all ERROR_ prefixed Kconfig symbols
+_KCONFIG_ERROR_VARS = $(filter CONFIG_ERROR_%,$(.VARIABLES))
+_KCONFIG_ERRORS = $(foreach v,$(_KCONFIG_ERROR_VARS),$($(v)))
+
+# this checks that no Kconfig error symbols are set. These symbols are used
+# to indicate invalid conditions
+check-kconfig-errors: $(KCONFIG_OUT_CONFIG) $(KCONFIG_GENERATED_AUTOCONF_HEADER_C)
+ifneq (,$(_KCONFIG_ERRORS))
+	@$(COLOR_ECHO) "$(COLOR_RED) !! There are ERRORS in the configuration !! $(COLOR_RESET)"
+	@for err in $(_KCONFIG_ERRORS); do \
+	  echo "- $$err"; \
+	done
+	@false
+endif
 
 endif

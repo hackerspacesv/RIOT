@@ -13,6 +13,7 @@
  * @author  Martine Lenders <mlenders@inf.fu-berlin.de>
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -22,6 +23,7 @@
 #include "net/gnrc/ipv6.h"
 #include "net/gnrc/ipv6/hdr.h"
 #include "net/gnrc/netreg.h"
+#include "net/gnrc/tx_sync.h"
 #include "net/udp.h"
 #include "utlist.h"
 #include "xtimer.h"
@@ -88,8 +90,11 @@ void gnrc_sock_create(gnrc_sock_reg_t *reg, gnrc_nettype_t type, uint32_t demux_
 }
 
 ssize_t gnrc_sock_recv(gnrc_sock_reg_t *reg, gnrc_pktsnip_t **pkt_out,
-                       uint32_t timeout, sock_ip_ep_t *remote)
+                       uint32_t timeout, sock_ip_ep_t *remote,
+                       gnrc_sock_recv_aux_t *aux)
 {
+    /* only used when some sock_aux_% module is used */
+    (void)aux;
     gnrc_pktsnip_t *pkt, *netif;
     msg_t msg;
 
@@ -106,7 +111,7 @@ ssize_t gnrc_sock_recv(gnrc_sock_reg_t *reg, gnrc_pktsnip_t **pkt_out,
     }
 #endif
 
-    if (reg->mbox.cib.mask != (GNRC_SOCK_MBOX_SIZE - 1)) {
+    if (mbox_size(&reg->mbox) != GNRC_SOCK_MBOX_SIZE) {
         return -EINVAL;
     }
 #ifdef MODULE_XTIMER
@@ -149,6 +154,12 @@ ssize_t gnrc_sock_recv(gnrc_sock_reg_t *reg, gnrc_pktsnip_t **pkt_out,
     assert(ipv6_hdr != NULL);
     memcpy(&remote->addr, &ipv6_hdr->src, sizeof(ipv6_addr_t));
     remote->family = AF_INET6;
+#if IS_USED(MODULE_SOCK_AUX_LOCAL)
+    if (aux->local != NULL) {
+        memcpy(&aux->local->addr, &ipv6_hdr->dst, sizeof(ipv6_addr_t));
+        aux->local->family = AF_INET6;
+    }
+#endif /* MODULE_SOCK_AUX_LOCAL */
     netif = gnrc_pktsnip_search_type(pkt, GNRC_NETTYPE_NETIF);
     if (netif == NULL) {
         remote->netif = SOCK_ADDR_ANY_NETIF;
@@ -157,11 +168,24 @@ ssize_t gnrc_sock_recv(gnrc_sock_reg_t *reg, gnrc_pktsnip_t **pkt_out,
         gnrc_netif_hdr_t *netif_hdr = netif->data;
         /* TODO: use API in #5511 */
         remote->netif = (uint16_t)netif_hdr->if_pid;
+#if IS_USED(MODULE_SOCK_AUX_TIMESTAMP)
+        if (aux->timestamp != NULL) {
+            if (gnrc_netif_hdr_get_timestamp(netif_hdr, aux->timestamp) == 0) {
+                aux->flags |= GNRC_SOCK_RECV_AUX_FLAG_TIMESTAMP;
+            }
+        }
+#endif /* MODULE_SOCK_AUX_TIMESTAMP */
+#if IS_USED(MODULE_SOCK_AUX_RSSI)
+        if ((aux->rssi) && (netif_hdr->rssi != GNRC_NETIF_HDR_NO_RSSI)) {
+            aux->flags |= GNRC_SOCK_RECV_AUX_FLAG_RSSI;
+            *aux->rssi = netif_hdr->rssi;
+        }
+#endif /* MODULE_SOCK_AUX_RSSI */
     }
     *pkt_out = pkt; /* set out parameter */
 
 #if IS_ACTIVE(SOCK_HAS_ASYNC)
-    if (reg->async_cb.generic && cib_avail(&reg->mbox.cib)) {
+    if (reg->async_cb.generic && mbox_avail(&reg->mbox)) {
         reg->async_cb.generic(reg, SOCK_ASYNC_MSG_RECV, reg->async_cb_arg);
     }
 #endif
@@ -182,11 +206,22 @@ ssize_t gnrc_sock_send(gnrc_pktsnip_t *payload, sock_ip_ep_t *local,
 #ifdef MODULE_GNRC_NETERR
     unsigned status_subs = 0;
 #endif
+#if IS_USED(MODULE_GNRC_TX_SYNC)
+    gnrc_tx_sync_t tx_sync;
+#endif
 
     if (local->family != remote->family) {
         gnrc_pktbuf_release(payload);
         return -EAFNOSUPPORT;
     }
+
+#if IS_USED(MODULE_GNRC_TX_SYNC)
+    if (gnrc_tx_sync_append(payload, &tx_sync)) {
+        gnrc_pktbuf_release(payload);
+        return -ENOMEM;
+    }
+#endif
+
     switch (local->family) {
 #ifdef SOCK_HAS_IPV6
         case AF_INET6: {
@@ -231,7 +266,7 @@ ssize_t gnrc_sock_send(gnrc_pktsnip_t *payload, sock_ip_ep_t *local,
         }
         netif_hdr = netif->data;
         netif_hdr->if_pid = iface;
-        LL_PREPEND(pkt, netif);
+        pkt = gnrc_pkt_prepend(pkt, netif);
     }
 #ifdef MODULE_GNRC_NETERR
     /* cppcheck-suppress uninitvar
@@ -248,6 +283,11 @@ ssize_t gnrc_sock_send(gnrc_pktsnip_t *payload, sock_ip_ep_t *local,
         gnrc_pktbuf_release(pkt);
         return -EBADMSG;
     }
+
+#if IS_USED(MODULE_GNRC_TX_SYNC)
+    gnrc_tx_sync(&tx_sync);
+#endif
+
 #ifdef MODULE_GNRC_NETERR
     uint32_t last_status = GNRC_NETERR_SUCCESS;
 

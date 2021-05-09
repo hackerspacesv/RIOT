@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "od.h"
 #include "timex.h"
 #include "random.h"
 #include "periph/rtt.h"
@@ -41,9 +42,6 @@
 #include "include/rx_state_machine.h"
 #include "include/lwmac_internal.h"
 
-#define ENABLE_DEBUG    (0)
-#include "debug.h"
-
 #ifndef LOG_LEVEL
 /**
  * @brief Default log level define
@@ -52,6 +50,9 @@
 #endif
 
 #include "log.h"
+
+#define ENABLE_DEBUG 0
+#include "debug.h"
 
 /**
  * @brief  LWMAC thread's PID
@@ -77,7 +78,7 @@ static const gnrc_netif_ops_t lwmac_ops = {
 };
 
 int gnrc_netif_lwmac_create(gnrc_netif_t *netif, char *stack, int stacksize,
-                            char priority, char *name, netdev_t *dev)
+                            char priority, const char *name, netdev_t *dev)
 {
     return gnrc_netif_create(netif, stack, stacksize, priority, name, dev,
                              &lwmac_ops);
@@ -106,13 +107,16 @@ static void lwmac_reinit_radio(gnrc_netif_t *netif)
                                 sizeof(netif->l2addr));
     }
 
-   /* Enable RX-start and TX-started and TX-END interrupts. */
-   netopt_enable_t enable = NETOPT_ENABLE;
-   netif->dev->driver->set(netif->dev, NETOPT_RX_START_IRQ, &enable, sizeof(enable));
-   netif->dev->driver->set(netif->dev, NETOPT_RX_END_IRQ, &enable, sizeof(enable));
-   netif->dev->driver->set(netif->dev, NETOPT_TX_START_IRQ, &enable, sizeof(enable));
-   netif->dev->driver->set(netif->dev, NETOPT_TX_END_IRQ, &enable, sizeof(enable));
-
+    /* Check if RX-start and TX-started and TX-END interrupts are supported */
+    if (IS_ACTIVE(DEVELHELP)) {
+        netopt_enable_t enable;
+        netif->dev->driver->get(netif->dev, NETOPT_RX_START_IRQ, &enable, sizeof(enable));
+        assert(enable == NETOPT_ENABLE);
+        netif->dev->driver->get(netif->dev, NETOPT_RX_END_IRQ, &enable, sizeof(enable));
+        assert(enable == NETOPT_ENABLE);
+        netif->dev->driver->get(netif->dev, NETOPT_TX_END_IRQ, &enable, sizeof(enable));
+        assert(enable == NETOPT_ENABLE);
+    }
 }
 
 static gnrc_pktsnip_t *_make_netif_hdr(uint8_t *mhr)
@@ -166,9 +170,6 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
         if (!(state->flags & NETDEV_IEEE802154_RAW)) {
             gnrc_pktsnip_t *ieee802154_hdr, *netif_hdr;
             gnrc_netif_hdr_t *hdr;
-#if ENABLE_DEBUG
-            char src_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
-#endif
             size_t mhr_len = ieee802154_get_frame_hdr_len(pkt->data);
 
             if (mhr_len == 0) {
@@ -207,18 +208,21 @@ static gnrc_pktsnip_t *_recv(gnrc_netif_t *netif)
             hdr->rssi = rx_info.rssi;
             gnrc_netif_hdr_set_netif(hdr, netif);
             pkt->type = state->proto;
-#if ENABLE_DEBUG
-            DEBUG("_recv_ieee802154: received packet from %s of length %u\n",
-                  gnrc_netif_addr_to_str(src_str, sizeof(src_str),
-                                         gnrc_netif_hdr_get_src_addr(hdr),
-                                         hdr->src_l2addr_len),
-                  nread);
-#if defined(MODULE_OD)
-            od_hex_dump(pkt->data, nread, OD_WIDTH_DEFAULT);
-#endif
-#endif
+            if (IS_ACTIVE(ENABLE_DEBUG)) {
+                char src_str[GNRC_NETIF_HDR_L2ADDR_PRINT_LEN];
+
+                DEBUG("_recv_ieee802154: received packet from %s of length %u\n",
+                      gnrc_netif_addr_to_str(gnrc_netif_hdr_get_src_addr(hdr),
+                                             hdr->src_l2addr_len,
+                                             src_str),
+                      nread);
+
+                if (IS_USED(MODULE_OD)) {
+                    od_hex_dump(pkt->data, nread, OD_WIDTH_DEFAULT);
+                }
+            }
             gnrc_pktbuf_remove_snip(pkt, ieee802154_hdr);
-            LL_APPEND(pkt, netif_hdr);
+            pkt = gnrc_pkt_append(pkt, netif_hdr);
         }
 
         DEBUG("_recv_ieee802154: reallocating.\n");
@@ -923,10 +927,8 @@ static void _lwmac_msg_handler(gnrc_netif_t *netif, msg_t *msg)
         }
 #endif
         default: {
-#if ENABLE_DEBUG
-            DEBUG("[LWMAC]: unknown message type 0x%04x"
+            DEBUG("[LWMAC]: unknown message type 0x%04x "
                   "(no message handler defined)\n", msg->type);
-#endif
             break;
         }
     }

@@ -75,6 +75,13 @@ typedef struct __attribute__((packed)) {
 #define JEDEC_NEXT_BANK (0x7f)
 
 /**
+ * @brief   The highest possible bank number when reading manufacturer ID
+ *
+ * @see http://www.jedec.org/standards-documents/results/jep106
+ */
+#define JEDEC_BANK_MAX  (10)
+
+/**
  * @brief   Flag to set when the device support 4KiB sector erase (sector_erase opcode)
  */
 #define SPI_NOR_F_SECT_4K   (1)
@@ -104,6 +111,8 @@ typedef struct {
     spi_t spi;               /**< SPI bus the device is connected to */
     spi_mode_t mode;         /**< SPI mode */
     gpio_t cs;               /**< CS pin GPIO handle */
+    gpio_t wp;               /**< Write Protect pin GPIO handle */
+    gpio_t hold;             /**< HOLD pin GPIO handle */
     uint8_t addr_width;      /**< Number of bytes in addresses, usually 3 for small devices */
 } mtd_spi_nor_params_t;
 
